@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>매물 등록</title>
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+      font-weight: 400;
+      font-size: 18px;
+      color: #111;
+      line-height: 1.6;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      background-color: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+        Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+    .form-container {
+      background: #fff;
+      padding: 30px 30px 40px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      width: 100%;
+      max-width: 600px;
+    }
+    h1 {
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 20px;
+      font-size: 24px;
+      font-weight: bold;
+      color: #111;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+      font-size: 15px;
+      color: #111;
+    }
+    label[for="description"] {
+      margin-bottom: 8px;
+    }
+    label[for="size"] {
+      margin-left: 3px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-weight: 400;
+      color: #111;
+      font-family: inherit;
+    }
+    select {
+      font-size: 14px;
+    }
+    input {
+      font-size: 18px;
+    }
+    #description {
+      height: 200px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-top: 5px;
+      font-weight: 400;
+      font-size: 18px;
+      color: #111;
+      font-family: inherit;
+    }
+    button {
+      margin-top: 25px;
+      width: 100%;
+      padding: 14px 16px;
+      background-color: #E0E0E0;
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: normal;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      font-family: inherit;
+    }
+    button:hover {
+      background-color: #B0B0B0;
+    }
+    .ql-toolbar, .ql-container, .ql-editor {
+      font-size: 18px !important;
+      font-weight: 400 !important;
+      color: #111 !important;
+      font-family: inherit !important;
+      line-height: 1.6;
+    }
+    
+    .ql-editor.ql-blank::before {
+      font-size: 14px !important;
+      color: #888 !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h1>매물 등록</h1>
+    <form onsubmit="handleSubmit(event)">
+      <label for="buildingName">건물 명:</label>
+      <input type="text" id="buildingName" name="buildingName" required />
+      <label for="description">건물에 대한 설명 (텍스트 + 이미지):</label>
+      <div id="description"></div>
+      <label for="price">가격 (만원):</label>
+      <input type="number" id="price" name="price" min="0" required />
+      <label for="buildingType">건물 종류:</label>
+      <select id="buildingType" name="buildingType" required>
+        <option value="">선택하세요</option>
+        <option value="oneRoom">원룸</option>
+        <option value="twoRoom">투룸</option>
+        <option value="apartment">아파트</option>
+        <option value="officetel">오피스텔</option>
+        <option value="house">주택</option>
+        <option value="villa">빌라</option>
+        <option value="new">분양/입주</option>
+      </select>
+      <label for="size">평수 (평):</label>
+      <input type="number" id="size" name="size" min="0" step="0.1" required />
+      <input type="hidden" name="descriptionContent" id="descriptionContent" />
+      <button type="submit">등록하기</button>
+    </form>
+  </div>
+  <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+  <script>
+    const quill = new Quill('#description', {
+      theme: 'snow',
+      placeholder: '건물에 대한 설명을 입력하고, 이미지도 삽입하세요.',
+      modules: {
+        toolbar: [
+          ['bold', 'italic', 'underline'],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+          ['link', 'image']
+        ]
+      }
+    });
+    function handleSubmit(event) {
+      event.preventDefault();
+      const html = quill.root.innerHTML;
+      document.getElementById('descriptionContent').value = html;
+      console.log('폼 제출됨:', html);
+    }
+  </script>
+</body>
+</html>
