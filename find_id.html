@@ -72,6 +72,10 @@
     .back-link a:hover {
       text-decoration: underline;
     }
+    .required{
+      color: #2563eb;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -79,7 +83,7 @@
     <h2>아이디 찾기</h2>
     <form>
       <div class="form-group">
-        <label for="email">이메일:</label>
+        <label for="email">이메일 <span class="required">*</span></label>
         <input type="text" id="email" name="email" placeholder="이메일 입력">
       </div>
       <button type="submit" class="btn">아이디 찾기</button>
