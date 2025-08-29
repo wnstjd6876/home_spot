@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>관심목록</title>
+<style>
+:root{--bg:#f7f8fb;--panel:#fff;--line:#e6e8ee;--text:#0f172a;--muted:#6b7280}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.6 ui-sans-serif,system-ui,"Noto Sans KR",sans-serif}
+header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line)}
+.wrap{max-width:960px;margin:0 auto;padding:12px 14px;display:flex;gap:10px;align-items:center}
+.brand{font-weight:800}
+.btn{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer}
+main{max-width:960px;margin:0 auto;padding:16px}
+.card{display:grid;grid-template-columns:120px 1fr;gap:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.thumb{width:120px;height:90px;border-radius:10px;background:#eef2ff;object-fit:cover}
+.muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">HomeSpot</div>
+    <button class="btn" onclick="location.href='tenant_main.html'">메인</button>
+  </div>
+</header>
+<main>
+  <h2>내가 찜한 매물</h2>
+  <div id="list"></div>
+</main>
+
+<script>
+const FAV_KEY='hs_favs';
+const FAKE_DB=[
+  {id:101,title:'마포 한강뷰 아파트',img:'https://picsum.photos/seed/a1/240/160',addr:'마포구',price:95000,area:84},
+  {id:202,title:'연남역 투룸',img:'https://picsum.photos/seed/a2/240/160',addr:'마포구',price:85000,area:28},
+  {id:303,title:'여의도 오피스텔',img:'https://picsum.photos/seed/a3/240/160',addr:'영등포구',price:150000,area:52},
+  {id:404,title:'성산동 빌라',img:'https://picsum.photos/seed/a4/240/160',addr:'마포구',price:72000,area:39},
+];
+function render(){
+  const ids=new Set(JSON.parse(localStorage.getItem(FAV_KEY)||'[]'));
+  const items=FAKE_DB.filter(x=>ids.has(x.id));
+  document.getElementById('list').innerHTML =
+    items.length? items.map(d=>`
+      <div class="card">
+        <img class="thumb" src="${d.img}" alt="">
+        <div>
+          <b>${d.title}</b>
+          <div class="muted">${d.addr}</div>
+          <div>${d.area}㎡ · ${d.price}만</div>
+          <button onclick="removeFav(${d.id})" class="btn" style="margin-top:8px">찜 해제</button>
+        </div>
+      </div>`).join('')
+    : '<div class="muted">찜한 매물이 없습니다.</div>';
+}
+function removeFav(id){
+  const ids=new Set(JSON.parse(localStorage.getItem(FAV_KEY)||'[]'));
+  ids.delete(id); localStorage.setItem(FAV_KEY,JSON.stringify([...ids])); render();
+}
+render();
+</script>
+</body>
+</html>

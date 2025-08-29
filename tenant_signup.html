@@ -89,14 +89,31 @@
           <input type="text" name="username" placeholder="아이디" required />
           <input type="password" name="password" placeholder="비밀번호" required />
           <input type="password" name="confirmPassword" placeholder="비밀번호 확인" required />
+          <input type="text" name="nickname" placeholder="닉네임(표시 이름)" required />
           <input type="email" name="email" placeholder="이메일" required />
         </div>
         <button type="submit" class="signup-button">회원가입</button>
       </div>
     </form>
     <div class="links">
-      <p><a href="login.html">이미 계정이 있으신가요? 로그인</a></p>
+      <p><a href="#" onclick="window.close(); return false;">(완료 후) 창 닫기</a></p>
     </div>
+    <script>
+      // 세입자 회원가입: 성공하면 창 닫기
+      document.querySelector('form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const fd = new FormData(form);
+        const res = await fetch(form.action, { method: form.method, body: fd, credentials: 'same-origin' });
+        if (res.ok) {
+          alert('회원가입이 완료되었습니다.');
+          window.opener?.postMessage({type:'tenant_signup_done'}, '*');
+          window.close();
+        } else {
+          alert('회원가입에 실패했습니다.');
+        }
+      });
+    </script>
   </div>
 </body>
 </html>

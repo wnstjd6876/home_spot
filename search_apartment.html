@@ -1,0 +1,155 @@
+<!-- search_apartment.html -->
+<!-- 위 search_studio.html과 동일, TYPE만 변경 -->
+<!-- 아래부터 전체 복붙 후 TYPE 수정 -->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>아파트 검색 – HomeSpot</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+/* (동일 CSS – 생략 없이 붙여넣기) */
+:root{--bg:#f7f8fb;--panel:#fff;--line:#e6e8ee;--text:#0f172a;--muted:#6b7280;--primary:#2563eb}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.6 ui-sans-serif,system-ui,"Noto Sans KR",sans-serif}
+header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--line)}
+.wrap{max-width:1280px;margin:0 auto;padding:10px 14px;display:flex;gap:10px;align-items:center}
+.brand{font-weight:800}
+.search{flex:1;display:flex;gap:8px}
+.search input, .search select{padding:10px;border:1px solid var(--line);border-radius:10px}
+.search input{flex:1}
+.btn{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer}
+.btn.primary{background:var(--primary);color:#fff;border-color:transparent}
+main{max-width:1280px;margin:0 auto;padding:10px;display:grid;grid-template-columns:420px 1fr;gap:12px;height:calc(100vh - 66px)}
+aside{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:auto}
+#map{border:1px solid var(--line);border-radius:14px}
+.filter{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:12px;border-radius:14px 14px 0 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row{display:flex;gap:8px;align-items:center}
+input[type="number"], select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+.chip{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;cursor:pointer}
+.chip.active{background:#eef2ff;border-color:#c7d2fe}
+#count{padding:8px 12px;color:var(--muted);border-bottom:1px solid var(--line)}
+.card{display:grid;grid-template-columns:120px 1fr;gap:10px;padding:12px;border-bottom:1px solid var(--line);cursor:pointer}
+.thumb{width:120px;height:90px;background:#eef2ff;border-radius:10px;object-fit:cover}
+.title{display:flex;align-items:center;gap:8px}
+.pill{padding:2px 6px;border-radius:999px;background:#eef2ff;font-size:12px}
+.muted{color:var(--muted)}
+.price-pin{background:#2563eb;color:#fff;font-weight:700;border-radius:999px;padding:6px 10px;border:2px solid #fff;box-shadow:0 6px 18px rgba(0,0,0,.12);white-space:nowrap;transform:translate(-50%,-50%)}
+.price-pin.jeonse{background:#10b981}.price-pin.rent{background:#f59e0b}.price-pin.sale{background:#ef4444}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">HomeSpot</div>
+    <div class="search">
+      <input id="q" placeholder="지역·지하철·키워드"/>
+      <select id="sort">
+        <option value="rec">추천순</option>
+        <option value="priceAsc">가격 낮은순</option>
+        <option value="priceDesc">가격 높은순</option>
+        <option value="areaDesc">면적 큰순</option>
+      </select>
+      <button class="btn primary" id="btnSearch">검색</button>
+    </div>
+    <button class="btn" onclick="location.href='tenant_favorites.html'">관심목록</button>
+    <button class="btn" onclick="location.href='mainpagetenant.html'">메인</button>
+  </div>
+</header>
+
+<main>
+  <aside>
+    <div class="filter">
+      <h3 id="typeTitle">아파트 검색</h3>
+      <div class="grid">
+        <div>
+          <label>가격(만)</label>
+          <div class="row"><input type="number" id="minPrice" placeholder="최소"><input type="number" id="maxPrice" placeholder="최대"></div>
+        </div>
+        <div>
+          <label>면적(㎡)</label>
+          <div class="row"><input type="number" id="minArea" placeholder="최소"><input type="number" id="maxArea" placeholder="최대"></div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label>옵션</label>
+        <button class="chip" data-opt="new">신축</button>
+        <button class="chip" data-opt="parking">주차</button>
+        <button class="chip" data-opt="pet">반려동물</button>
+      </div>
+      <div class="row" style="margin-top:10px;justify-content:flex-end">
+        <button class="btn" id="btnReset">초기화</button>
+        <button class="btn primary" id="btnApply">적용</button>
+      </div>
+    </div>
+    <div id="count"></div>
+    <div id="list"></div>
+  </aside>
+  <div id="map"></div>
+</main>
+
+<script>
+const TYPE='apartment';
+const FAV_KEY='hs_favs';
+let map, markers=[], DATA=[], STATE={q:'', sort:'rec', minPrice:'', maxPrice:'', minArea:'', maxArea:'', rooms:null, opts:new Set()};
+const money=n=> n>=10000 ? (n/10000).toFixed(1)+'억' : (n+'만'); const $=s=>document.querySelector(s); const toInt=v=>{const n=Number(v);return Number.isFinite(n)?n:null;}
+function getFavSet(){return new Set(JSON.parse(localStorage.getItem(FAV_KEY)||'[]'));}
+
+async function loadData(){
+  DATA=[
+    {id:101,type:'apartment',title:'마포 한강뷰 아파트',img:'https://picsum.photos/seed/a1/240/160',addr:'마포구',price:95000,area:84,rooms:3,lat:37.545,lng:126.94,deal:'sale',opts:['new']},
+    {id:406,type:'apartment',title:'합정 신축단지',img:'https://picsum.photos/seed/a6/240/160',addr:'마포구',price:125000,area:114,rooms:4,lat:37.549,lng:126.913,deal:'sale',opts:['new','parking']}
+  ];
+}
+function filterAndSort(){
+  let arr=DATA.filter(x=>x.type===TYPE);
+  if(STATE.q){const q=STATE.q.trim();arr=arr.filter(x=>`${x.title} ${x.addr}`.includes(q));}
+  const minP=toInt(STATE.minPrice), maxP=toInt(STATE.maxPrice);
+  const minA=toInt(STATE.minArea),  maxA=toInt(STATE.maxArea);
+  if(minP!=null) arr=arr.filter(x=>x.price>=minP);
+  if(maxP!=null) arr=arr.filter(x=>x.price<=maxP);
+  if(minA!=null) arr=arr.filter(x=>x.area>=minA);
+  if(maxA!=null) arr=arr.filter(x=>x.area<=maxA);
+  if(STATE.opts.size){ arr=arr.filter(x=>{const set=new Set(x.opts||[]); for(const k of STATE.opts) if(!set.has(k)) return false; return true;}); }
+  switch(STATE.sort){case 'priceAsc': arr.sort((a,b)=>a.price-b.price);break;case 'priceDesc':arr.sort((a,b)=>b.price-a.price);break;case 'areaDesc': arr.sort((a,b)=>b.area-a.area);break;}
+  return arr;
+}
+function makeIcon(d){ const cls=d.deal?`price-pin ${d.deal}`:'price-pin'; const label=d.deal==='rent'?`월세 ${d.price}만`:d.deal==='jeonse'?`전세 ${money(d.price)}`:d.deal==='sale'?`${money(d.price)}`:`${money(d.price)}`; return L.divIcon({html:`<div class="${cls}">${label}</div>`,className:'',iconSize:[1,1]}); }
+function clearMarkers(){markers.forEach(m=>m.remove()); markers=[];}
+function renderList(){
+  const set=getFavSet(), arr=filterAndSort();
+  $('#count').textContent=`검색 결과 ${arr.length}건`;
+  $('#list').innerHTML = arr.map(d=>`
+    <div class="card" onclick="focusItem(${d.id})">
+      <img class="thumb" src="${d.img}" alt="">
+      <div>
+        <div class="title"><b>${d.title}</b><span class="pill">${d.area}㎡</span><span class="pill">방 ${d.rooms}</span><b style="margin-left:auto">${money(d.price)}</b></div>
+        <div class="muted">${d.addr}</div>
+        <div class="row" style="margin-top:6px"><button class="btn" onclick="event.stopPropagation();toDetail(${d.id})">상세</button><button class="btn" onclick="event.stopPropagation();toggleFav(${d.id})">${set.has(d.id)?'찜해제':'★ 찜'}</button></div>
+      </div>
+    </div>`).join('') || '<div style="padding:12px" class="muted">조건에 맞는 매물이 없습니다.</div>';
+}
+function renderMap(){ const arr=filterAndSort(); clearMarkers(); arr.forEach(d=>{ const m=L.marker([d.lat,d.lng],{icon:makeIcon(d)}).addTo(map).bindPopup(`<b>${d.title}</b><br>${d.addr}<br>${money(d.price)} · ${d.area}㎡`); m.on('click',()=>toDetail(d.id)); markers.push(m); }); }
+function render(){ renderList(); renderMap(); }
+function focusItem(id){ const d=filterAndSort().find(x=>x.id===id); if(!d) return; map.setView([d.lat,d.lng],15); }
+function toDetail(id){ alert('상세 페이지는 추후 연결. id='+id); }
+function toggleFav(id){ const set=getFavSet(); set.has(id)?set.delete(id):set.add(id); localStorage.setItem(FAV_KEY,JSON.stringify([...set])); renderList(); }
+function resetFilters(){ STATE={...STATE,minPrice:'',maxPrice:'',minArea:'',maxArea:'',rooms:null,opts:new Set()}; ['minPrice','maxPrice','minArea','maxArea'].forEach(id=>$('#'+id).value=''); document.querySelectorAll('.chip.active').forEach(el=>el.classList.remove('active')); render(); }
+
+async function boot(){
+  await loadData();
+  map=L.map('map').setView([37.55,126.98],12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  document.getElementById('btnSearch').onclick=()=>{STATE.q=$('#q').value.trim();STATE.sort=$('#sort').value;render();}
+  document.getElementById('btnApply').onclick=()=>{STATE.minPrice=$('#minPrice').value;STATE.maxPrice=$('#maxPrice').value;STATE.minArea=$('#minArea').value;STATE.maxArea=$('#maxArea').value;render();}
+  document.getElementById('btnReset').onclick=resetFilters;
+  document.querySelectorAll('.chip[data-opt]').forEach(ch=>{ ch.addEventListener('click',()=>{ch.classList.toggle('active'); const k=ch.dataset.opt; ch.classList.contains('active')?STATE.opts.add(k):STATE.opts.delete(k);}); });
+  render();
+}
+boot();
+</script>
+</body>
+</html>

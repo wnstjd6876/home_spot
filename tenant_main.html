@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>홈스팟 – 세입자</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --line: #e6e8ee;
+      --text: #0f172a;
+      --muted: #6b7280;
+      --shadow: 0 10px 30px rgba(17, 24, 39, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.55 ui-sans-serif, system-ui, "Noto Sans KR", sans-serif;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px 24px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+    }
+
+    .logo {
+      width: 23px;
+      height: 23px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    .right {
+      margin-left: auto;
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      background: #B3E5FC;
+      color: #0f172a;
+      border-color: transparent;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    .hero {
+      margin-top: 18px;
+      border-radius: 20px;
+      padding: 28px;
+      background: radial-gradient(900px 350px at 15% -50%, #dbeafe 10%, transparent 60%),
+                  linear-gradient(135deg, #eff6ff, #f5f3ff);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 26px;
+    }
+
+    .search {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 12px 16px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+      width: 100%;
+    }
+
+    .search input {
+      border: 0;
+      outline: 0;
+      flex-grow: 1;
+      font-size: 16px;
+      background: transparent;
+    }
+
+    .search button {
+      margin-left: auto;
+    }
+
+    .filterbar {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 8px 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .chip.active {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    @media (max-width: 1024px) {
+      #propertyList {
+      grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+    @media (max-width: 640px) {
+      #propertyList {
+      grid-template-columns: 1fr;
+    }
+}
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 18px 18px 18px;
+      padding-bottom: 18px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card .desc {
+      opacity: 0.85;
+    }
+
+    .thumb {
+      position: absolute;
+      right: 16px;
+      top: 10px;
+      width: 60px;
+      height: 60px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.25);
+      display: grid;
+      place-items: center;
+      font-size: 28px;
+    }
+
+    .cat { color: #fff; }
+    .cat.house     { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+    .cat.apartment { background: linear-gradient(135deg, #f87171, #ef4444); }
+    .cat.office    { background: linear-gradient(135deg, #34d399, #059669); }
+    .cat.studio    { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+    .cat.sale      { background: linear-gradient(135deg, #a78bfa, #7c3aed); }
+    .cat.nearby    { background: linear-gradient(135deg, #f472b6, #ec4899); }
+
+    .placeholder {
+      padding: 14px;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      background: #fff;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    .favbar {
+      display: flex;
+      gap: 10px;
+      overflow: auto;
+    }
+
+    .map-toggle {
+      margin-top: 16px;
+    }
+
+    #propertyList {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      border: none;
+      padding: 0;
+    }
+
+    #pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap row">
+    <div class="brand">
+      <img class="logo" src="home.jpg" alt="로고" />
+      홈스팟
+    </div>
+    <nav class="right">
+      <a class="btn" href="login.html">로그인</a>
+      <a class="btn primary" href="tenant_signup.html">회원가입</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <h1>조건 맞는 집, 빠르게 찾자 🧭</h1>
+    <div class="search">
+      <span>🔍</span>
+      <input id="q" placeholder="지역 · 지하철역 · 키워드로 검색" />
+      <button class="btn" onclick="goSearch()">검색</button>
+    </div>
+
+    <div class="filterbar">
+      <button class="chip" data-k="price">가격</button>
+      <button class="chip" data-k="area">면적</button>
+      <button class="chip" data-k="rooms">방 개수</button>
+      <button class="chip" data-k="type">집 유형</button>
+      <button class="chip" data-k="pet">반려동물</button>
+      <button class="chip" data-k="new">신축</button>
+      <button class="chip" onclick="location.href='tenant_map.html'">내 주변 보기</button> 
+      <button class="chip" onclick="resetFilters()">초기화</button>
+      <div style="margin-left:auto"></div>
+    </div>
+  </section>
+
+  <section class="grid grid-3" style="margin-top:16px">
+    <a class="card cat apartment" href="search_apartment.html">
+      <h3>아파트</h3>
+      <div class="desc">단지 정보 · 실거래가 알림</div>
+      <div class="thumb">🏢</div>
+    </a>
+    <a class="card cat office" href="search_office.html">
+      <h3>오피스텔</h3>
+      <div class="desc">다양한 옵션과 합리적 전월세</div>
+      <div class="thumb">🏙️</div>
+    </a>
+    <a class="card cat house" href="search_villa.html">
+      <h3>주택/빌라</h3>
+      <div class="desc">전·월세부터 매매까지</div>
+      <div class="thumb">🏘️</div>
+    </a>
+    <a class="card cat sale" href="search_bunyang.html">
+      <h3>분양</h3>
+      <div class="desc">전국 분양/입주 정보</div>
+      <div class="thumb">🚧</div>
+    </a>
+  </section>
+
+  <div class="section-title" style="margin-top:20px; margin-bottom:12px">
+    <h2 style="margin:0">추천 매물 (AI)</h2>
+    <a class="btn" href="tenant_map.html">지도에서 전체 보기 →</a>
+  </div>
+  <div id="recommended" class="placeholder">추천 매물 데이터 불러오기 예정…</div>
+
+  <div class="section-title" style="margin-top:20px">
+    <h2 style="margin:0">찜한 매물 목록</h2>
+  </div>
+
+  <div id="propertyList" style="margin-top:10px"></div>
+  <div id="pagination"></div>
+
+</main>
+
+<script>
+  function goSearch() {
+    const q = document.getElementById('q').value.trim();
+    if (!q) return alert('검색어를 입력하세요');
+    location.href = 'map.html?q=' + encodeURIComponent(q);
+  }
+
+  document.querySelectorAll('.chip[data-k]').forEach(btn => {
+    btn.addEventListener('click', () => btn.classList.toggle('active'));
+  });
+
+  function resetFilters() {
+    document.querySelectorAll('.chip.active').forEach(b => b.classList.remove('active'));
+  }
+
+  const properties = [
+    '매물 1',
+    '매물 2',
+    '매물 3',
+    '매물 4',
+    '매물 5',
+    '매물 6',
+    '매물 7',
+    '매물 8',
+    '매물 9',
+    '매물 10',
+    '매물 11',
+    '매물 12',
+    '매물 13',
+    '매물 14',
+    '매물 15',
+    '매물 16',
+    '매물 17',
+    '매물 18',
+    '매물 19',
+    '매물 20',
+    '매물 21',
+  ];
+
+  const itemsPerPage = 9;
+  let currentPage = 1;
+
+  function renderProperties(page) {
+    const list = document.getElementById('propertyList');
+    list.innerHTML = '';
+
+    const start = (page - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageItems = properties.slice(start, end);
+
+    pageItems.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.textContent = item;
+      list.appendChild(card);
+    });
+
+    renderPagination();
+  }
+
+  function renderPagination() {
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+
+    const pageCount = Math.ceil(properties.length / itemsPerPage);
+
+    const prevBtn = document.createElement('button');
+    prevBtn.textContent = '이전';
+    prevBtn.className = 'btn';
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderProperties(currentPage);
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      }
+    });
+    pagination.appendChild(prevBtn);
+
+    for (let i = 1; i <= pageCount; i++) {
+      const btn = document.createElement('button');
+      btn.textContent = i;
+      btn.className = 'btn';
+      if (i === currentPage) {
+        btn.style.fontWeight = 'bold';
+        btn.style.backgroundColor = '#B3E5FC';
+      }
+      btn.addEventListener('click', () => {
+        currentPage = i;
+        renderProperties(currentPage);
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+      pagination.appendChild(btn);
+    }
+
+    const nextBtn = document.createElement('button');
+    nextBtn.textContent = '다음';
+    nextBtn.className = 'btn';
+    nextBtn.disabled = currentPage === pageCount;
+    nextBtn.addEventListener('click', () => {
+      if (currentPage < pageCount) {
+        currentPage++;
+        renderProperties(currentPage);
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      }
+    });
+    pagination.appendChild(nextBtn);
+  }
+
+  renderProperties(currentPage);
+
+  window.addEventListener('scroll', () => {
+    const list = document.getElementById('propertyList');
+    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
+      // 무한스크롤 제거됨
+    }
+  });
+
+  const toggle = document.getElementById('mapToggle');
+  if (toggle) {
+    toggle.addEventListener('change', function () {
+      if (this.checked) {
+        window.location.href = 'map.html';
+      }
+    });
+  }
+</script>
+
+</body>
+</html>

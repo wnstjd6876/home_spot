@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>관리자 페이지</title>
+<style>
+  :root{
+    --bg:#f7f8fb; --panel:#ffffff; --line:#e6e8ee; --text:#0f172a; --muted:#6b7280; --brand:#2563eb;
+    --shadow:0 10px 30px rgba(17,24,39,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 ui-sans-serif,system-ui,'Noto Sans KR',sans-serif}
+  a{color:inherit;text-decoration:none}
+  header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);z-index:20}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px 24px}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .brand{display:flex;gap:10px;align-items:center;font-weight:800}
+  .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#22c1c3,#3a7bd5)}
+  .right{margin-left:auto;display:flex;gap:10px}
+  .btn{padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.08)}
+  .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
+  .btn.ghost{background:#fff}
+  .btn.small{padding:6px 10px;border-radius:10px;font-size:13px}
+  .btn.success{background:#16a34a;color:#fff;border-color:transparent}
+  .btn.warn{background:#ef4444;color:#fff;border-color:transparent}
+  .pill{border-radius:999px;padding:6px 10px;border:1px solid var(--line);background:#fff;font-size:12px;color:#334155}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
+  .muted{color:var(--muted)}
+  .page-title{display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .search{flex:1;min-width:220px;display:flex;gap:8px}
+  .input{padding:12px 14px;border:1px solid var(--line);border-radius:12px;outline:none;background:#fff;flex:1}
+  .select{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+
+  .table{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px}
+  .table th,.table td{padding:12px 12px;text-align:left;border-bottom:1px solid var(--line)}
+  .table thead th{font-size:12px;letter-spacing:.02em;text-transform:uppercase;color:#475569;background:#f9fafb;border-top:1px solid var(--line)}
+  .table tbody tr:hover{background:#fafafa}
+  .table .badge{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#fff;display:inline-block}
+  .table .clip{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .empty{padding:40px 0;text-align:center;color:#94a3b8}
+
+  dialog{border:none;border-radius:16px;padding:0;box-shadow:0 20px 60px rgba(2,6,23,.25)}
+  .modal{width:min(780px,90vw)}
+  .modal header{position:sticky;top:0;border-bottom:1px solid var(--line)}
+  .modal .content{padding:16px}
+  .modal .imgbox{width:100%;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#f3f4f6}
+  .modal .imgbox img{display:block;width:100%;height:auto}
+
+  @media (max-width: 720px){
+    .table .hide-sm{display:none}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap row">
+    <div class="brand"><div class="logo"></div>관리자</div>
+    <div class="right">
+      <a class="btn" href="/logout">로그아웃</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="page-title">
+    <h2 style="margin:10px 0 6px">중개사 승인 관리</h2>
+    <span class="pill" id="count-pill">대기 0건</span>
+  </div>
+
+  <section class="card">
+    <div class="toolbar">
+      <div class="search">
+        <input id="q" class="input" placeholder="아이디/이메일로 검색"/>
+        <button id="btnSearch" class="btn">검색</button>
+      </div>
+      <select id="status" class="select" title="상태 필터">
+        <option value="pending">대기</option>
+        <option value="approved">승인</option>
+        <option value="rejected">반려</option>
+      </select>
+      <button id="reload" class="btn">새로고침</button>
+    </div>
+
+    <table class="table" id="table">
+      <thead>
+        <tr>
+          <th style="width:22%">아이디</th>
+          <th style="width:24%">이메일</th>
+          <th class="hide-sm" style="width:28%">자격증</th>
+          <th style="width:26%">작업</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="4" class="empty">불러오는 중…</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<dialog id="licenseModal" class="modal">
+  <header>
+    <div class="wrap row" style="padding:10px 16px">
+      <div class="brand" style="gap:8px"><div class="logo" style="width:18px;height:18px"></div><span>자격증 미리보기</span></div>
+      <div class="right"><button class="btn small" onclick="closeModal()">닫기</button></div>
+    </div>
+  </header>
+  <div class="content">
+    <div class="imgbox"><img id="licenseImg" alt="license"/></div>
+  </div>
+</dialog>
+
+<script>
+const $ = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+
+// 데이터 불러오기 (기본: 대기 목록). 기존 엔드포인트를 유지합니다.
+async function fetchBrokers(){
+  const status = $('#status').value; // UI는 status를 제공하되, 서버가 pending만 지원해도 동작.
+  try{
+    let url = '/admin/broker-requests'; // 기존: 대기 목록
+    // 서버가 상태별 엔드포인트를 제공한다면 아래 주석을 적절히 변경해 사용할 수 있습니다.
+    // url = `/admin/brokers?status=${encodeURIComponent(status)}`;
+
+    const r = await fetch(url, {credentials:'include'});
+    if(!r.ok) throw new Error('failed');
+    const list = await r.json();
+    return Array.isArray(list) ? list : [];
+  }catch(e){
+    console.error(e);
+    return [];
+  }
+}
+
+function renderRows(list){
+  const q = $('#q').value.trim().toLowerCase();
+  const filtered = list.filter(x => !q || `${x.name||''}`.toLowerCase().includes(q) || `${x.email||''}`.toLowerCase().includes(q));
+  const tbody = $('#tbody');
+  if(!filtered.length){
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">목록이 없습니다</td></tr>`;
+  }else{
+    tbody.innerHTML = filtered.map(x => `
+      <tr>
+        <td class="clip">${escapeHtml(x.name||'')}</td>
+        <td class="clip">${escapeHtml(x.email||'')}</td>
+        <td class="hide-sm">
+          ${x.license_url ? `<a href="/uploads/${encodeURIComponent(x.license_url)}" target="_blank">원본 보기</a>
+          <button class="btn small" onclick="previewLicense('/uploads/${encodeURIComponent(x.license_url)}')">미리보기</button>` : '<span class="muted">-</span>'}
+        </td>
+        <td>
+          <div class="row" style="gap:8px">
+            <button class="btn small success" onclick="approve(${Number(x.agent_id)})">승인</button>
+            <button class="btn small warn" onclick="reject(${Number(x.agent_id)})">거절</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+  $('#count-pill').textContent = `대기 ${filtered.length}건`;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+}
+
+async function load(){
+  $('#tbody').innerHTML = `<tr><td colspan="4" class="empty">불러오는 중…</td></tr>`;
+  const list = await fetchBrokers();
+  renderRows(list);
+}
+
+async function approve(id){
+  if(!confirm('승인하시겠습니까?')) return;
+  try{
+    const r = await fetch(`/approve-broker/${id}`, {method:'POST'});
+    if(!r.ok) throw 0;
+    alert('승인 완료');
+    load();
+  }catch{ alert('승인 실패'); }
+}
+
+async function reject(id){
+  if(!confirm('거절하시겠습니까?')) return;
+  try{
+    const r = await fetch(`/reject-broker/${id}`, {method:'POST'});
+    if(!r.ok) throw 0;
+    alert('거절 완료');
+    load();
+  }catch{ alert('거절 실패'); }
+}
+
+function previewLicense(src){
+  $('#licenseImg').src = src;
+  $('#licenseModal').showModal();
+}
+function closeModal(){ $('#licenseModal').close(); }
+
+$('#btnSearch').addEventListener('click', load);
+$('#q').addEventListener('keydown', e=>{ if(e.key==='Enter') load(); });
+$('#reload').addEventListener('click', load);
+$('#status').addEventListener('change', load);
+
+window.addEventListener('DOMContentLoaded', load);
+</script>
+</body>
+</html>

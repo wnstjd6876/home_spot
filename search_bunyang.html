@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>HomeSpot – 분양 검색</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root{
+    --bg:#f7f8fb;--panel:#fff;--line:#e6e8ee;--text:#0f172a;--muted:#64748b;--pri:#2563eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 ui-sans-serif,system-ui,"Noto Sans KR",sans-serif}
+  a{color:inherit;text-decoration:none}
+
+  /* 헤더 */
+  header{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line)}
+  .wrap{max-width:1280px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:12px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800}
+  .logo{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2563eb,#8b5cf6)}
+  .right{margin-left:auto;display:flex;gap:8px}
+  .btn{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer}
+  .btn.pri{background:var(--pri);border-color:transparent;color:#fff}
+
+  /* 레이아웃 */
+  .page{display:grid;grid-template-columns:380px 1fr;gap:12px;max-width:1280px;margin:12px auto;padding:0 18px}
+  @media(max-width:1024px){.page{grid-template-columns:1fr}}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:14px}
+  .panel .head{padding:14px 14px 0 14px}
+  .panel .body{padding:12px 14px}
+  .muted{color:var(--muted)}
+  .tag{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:#fff}
+
+  /* 검색바 & 필터 */
+  .search{display:flex;gap:8px}
+  .search input{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+  .filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .filters select,.filters input{padding:10px;border:1px solid var(--line);border-radius:10px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+
+  /* 리스트 */
+  .list{max-height:calc(100vh - 210px);overflow:auto;padding-bottom:8px}
+  .card{display:flex;gap:10px;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+  .thumb{width:96px;height:72px;border-radius:10px;object-fit:cover;background:#eef2ff}
+  .pill{padding:2px 8px;border-radius:999px;background:#eef2ff;font-size:12px}
+  .price{font-weight:800}
+
+  /* 지도 */
+  #map{height:calc(100vh - 110px);min-height:480px;border:1px solid var(--line);border-radius:14px}
+  .leaflet-popup-content-wrapper{border-radius:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="mainpagetenant.html" title="세입자 메인으로">
+      <div class="logo"></div>HomeSpot
+    </a>
+    <div class="right">
+      <a class="btn" href="tenant_favorites.html">관심목록</a>
+      <a class="btn" href="tenant_map.html">지도</a>
+      <a class="btn pri" href="login.html">로그인</a>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+  <!-- 좌측: 검색/필터/리스트 -->
+  <section class="panel">
+    <div class="head">
+      <h2 style="margin:0 0 6px">분양/입주 검색</h2>
+      <div class="muted">지역·분양시기·유형·분양가로 빠르게 찾아보세요.</div>
+      <div class="search" style="margin-top:10px">
+        <input id="q" placeholder="단지명·지역·건설사로 검색"/>
+        <button class="btn pri" id="btnSearch">검색</button>
+      </div>
+
+      <div class="filters">
+        <select id="sido">
+          <option value="">시/도 전체</option>
+          <option>서울특별시</option><option>경기도</option><option>인천광역시</option>
+        </select>
+        <select id="gungu">
+          <option value="">시/군/구 전체</option>
+          <option>마포구</option><option>강남구</option><option>서초구</option>
+          <option>성남시</option><option>용인시</option><option>부평구</option>
+        </select>
+
+        <select id="period">
+          <option value="">분양/입주 시기</option>
+          <option value="Q3-2025">2025년 3분기</option>
+          <option value="Q4-2025">2025년 4분기</option>
+          <option value="Q1-2026">2026년 1분기</option>
+        </select>
+        <select id="ptype">
+          <option value="">주거 유형</option>
+          <option value="APT">아파트</option>
+          <option value="OFFICETEL">오피스텔</option>
+          <option value="VILLA">도시형/빌라</option>
+        </select>
+
+        <input id="pmin" type="number" placeholder="최소 분양가(만원)"/>
+        <input id="pmax" type="number" placeholder="최대 분양가(만원)"/>
+      </div>
+
+      <div class="row">
+        <span id="count" class="tag">검색결과 0건</span>
+        <button class="btn" id="btnReset">초기화</button>
+        <a class="btn" href="tenant_favorites.html">★ 관심목록</a>
+      </div>
+    </div>
+
+    <div class="body">
+      <div id="list" class="list"></div>
+    </div>
+  </section>
+
+  <!-- 우측: 지도 -->
+  <section id="map" class="panel"></section>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ======== 더미 데이터 (분양/입주) ======== */
+/*  나중에 실제 API로 대체:
+    fetch('/api/bunyang?query=...').then(r=>r.json()).then(initWithData)
+*/
+const BUNYANG = [
+  {
+    id: 1, name: '마포 한강 뷰', addr:'서울 마포구 망원동 123-4',
+    sido:'서울특별시', gungu:'마포구', type:'APT', period:'Q3-2025',
+    price: 95000, // 만원
+    lat:37.5565, lng:126.9101, builder:'HS건설', household: 384,
+    img:'https://images.unsplash.com/photo-1528909514045-2fa4ac7a08ba?q=80&w=800&auto=format&fit=crop'
+  },
+  {
+    id: 2, name: '강남 리버파크', addr:'서울 강남구 자곡동 77',
+    sido:'서울특별시', gungu:'강남구', type:'APT', period:'Q4-2025',
+    price: 180000, lat:37.4717, lng:127.1076, builder:'리버건설', household: 622,
+    img:'https://images.unsplash.com/photo-1509644851169-2acc08aa25b8?q=80&w=800&auto=format&fit=crop'
+  },
+  {
+    id: 3, name:'분당 더하우스 오피스텔', addr:'경기 성남시 분당구 서현동',
+    sido:'경기도', gungu:'성남시', type:'OFFICETEL', period:'Q1-2026',
+    price: 69000, lat:37.3853, lng:127.1235, builder:'더하우스', household: 210,
+    img:'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?q=80&w=800&auto=format&fit=crop'
+  },
+  {
+    id: 4, name:'부평 센트럴 라인', addr:'인천 부평구 부평동',
+    sido:'인천광역시', gungu:'부평구', type:'APT', period:'Q4-2025',
+    price: 72000, lat:37.5071, lng:126.7218, builder:'라인건설', household: 498,
+    img:'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=800&auto=format&fit=crop'
+  },
+  {
+    id: 5, name:'서초 가든뷰', addr:'서울 서초구 반포동',
+    sido:'서울특별시', gungu:'서초구', type:'VILLA', period:'Q3-2025',
+    price: 83000, lat:37.5035, lng:127.0048, builder:'가든개발', household: 96,
+    img:'https://images.unsplash.com/photo-1515263487990-61b07816b324?q=80&w=800&auto=format&fit=crop'
+  }
+];
+
+/* ======== 유틸 ======== */
+const $ = s => document.querySelector(s);
+const money = n => n>=10000 ? (n/10000).toFixed(1)+'억' : n.toLocaleString()+'만';
+
+/* ======== 지도 ======== */
+const map = L.map('map',{zoomControl:true}).setView([37.56,126.98], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19, attribution:'© OpenStreetMap'
+}).addTo(map);
+
+let markers = [];
+function clearMarkers(){
+  markers.forEach(m=>map.removeLayer(m));
+  markers = [];
+}
+function addMarker(item){
+  const m = L.marker([item.lat,item.lng]).addTo(map);
+  m.bindPopup(`<b>${item.name}</b><br>${item.addr}<br>분양가 ${money(item.price)}`);
+  m.on('click',()=>{
+    const el = document.getElementById('card-'+item.id);
+    if(el) el.scrollIntoView({behavior:'smooth',block:'center'});
+    highlightCard(item.id);
+  });
+  markers.push(m);
+}
+
+function fitToMarkers(){
+  if(markers.length===0) return;
+  const g = L.featureGroup(markers);
+  map.fitBounds(g.getBounds().pad(0.2));
+}
+
+/* ======== 렌더 ======== */
+function card(item){
+  return `
+    <div class="card" id="card-${item.id}">
+      <img class="thumb" src="${item.img}" alt="">
+      <div style="flex:1">
+        <div style="display:flex;gap:8px;align-items:center">
+          <b>${item.name}</b>
+          <span class="pill">${item.type}</span>
+          <span class="pill">${item.period}</span>
+          <span class="price" style="margin-left:auto">${money(item.price)}</span>
+        </div>
+        <div class="muted">${item.addr} · ${item.builder} · ${item.household}세대</div>
+        <div class="row" style="margin-top:6px">
+          <button class="btn" onclick="focusMap(${item.lat},${item.lng},${item.id})">지도</button>
+          <button class="btn" onclick="alert('상세 페이지 연결 예정')">상세</button>
+          <button class="btn" onclick="alert('관심 등록(추후 연동)')">★ 찜</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function highlightCard(id){
+  document.querySelectorAll('.card').forEach(c=>c.style.outline='none');
+  const el = document.getElementById('card-'+id);
+  if(el){ el.style.outline='2px solid #2563eb'; setTimeout(()=>el.style.outline='none',1200); }
+}
+
+function focusMap(lat,lng,id){
+  map.setView([lat,lng], 14,{animate:true});
+  const mk = markers.find(m=>{
+    const p=m.getLatLng(); return Math.abs(p.lat-lat)<1e-6 && Math.abs(p.lng-lng)<1e-6;
+  });
+  if(mk){ mk.openPopup(); }
+  highlightCard(id);
+}
+
+function applyFilters(list){
+  const q = $('#q').value.trim();
+  const sido = $('#sido').value;
+  const gungu = $('#gungu').value;
+  const period = $('#period').value;
+  const ptype = $('#ptype').value;
+  const min = $('#pmin').value ? Number($('#pmin').value) : null;
+  const max = $('#pmax').value ? Number($('#pmax').value) : null;
+
+  let arr = list.filter(x=>{
+    if(q && !(x.name+x.addr+x.builder).includes(q)) return false;
+    if(sido && x.sido!==sido) return false;
+    if(gungu && x.gungu!==gungu) return false;
+    if(period && x.period!==period) return false;
+    if(ptype && x.type!==ptype) return false;
+    if(min!=null && x.price<min) return false;
+    if(max!=null && x.price>max) return false;
+    return true;
+  });
+
+  $('#count').textContent = `검색결과 ${arr.length}건`;
+  return arr;
+}
+
+function render(){
+  const arr = applyFilters(BUNYANG);
+  $('#list').innerHTML = arr.map(card).join('') || `<div class="muted">검색 조건에 맞는 분양이 없습니다.</div>`;
+
+  clearMarkers();
+  arr.forEach(addMarker);
+  fitToMarkers();
+}
+
+/* ======== 이벤트 ======== */
+$('#btnSearch').onclick = render;
+$('#btnReset').onclick = ()=>{
+  ['q','sido','gungu','period','ptype','pmin','pmax'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el.tagName==='INPUT') el.value='';
+    else el.selectedIndex=0;
+  });
+  render();
+};
+
+/* 초기 렌더 */
+render();
+</script>
+</body>
+</html>
