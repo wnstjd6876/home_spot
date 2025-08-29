@@ -142,8 +142,11 @@
     <a class="btn" href="property_listing.html" style="color:#0f172a;font-weight:700">등록</a>
   </div>
   <div class="action inbox" style="flex:1; min-width: 200px; height: auto; padding: 16px 18px; border-radius: 14px; color:#fff; display:flex; align-items:center; justify-content:space-between; background: linear-gradient(135deg,#f472b6,#ec4899);">
-    <div><b>문의함</b><div class="muted" style="color:#ffe4f1">실시간 상담 연결</div></div>
-    <button class="btn" onclick="alert('문의함 이동')">보기</button>
+    <div>
+    <b>문의함</b>
+    <div class="muted" style="color:#ffe4f1">실시간 상담 연결</div>
+  </div>
+  <button class="btn" onclick="openChatPopup()">문의함</button>
   </div>
 </section>
 
@@ -319,6 +322,20 @@
   // 최초 로딩
   document.addEventListener('DOMContentLoaded', loadMyListings);
 })();
+</script>
+<script>
+  function openChatPopup() {
+    const width = 480;
+    const height = 600;
+    const left = (window.screen.width - width) / 2;
+    const top = (window.screen.height - height) / 2;
+
+    window.open(
+      'chat.html',
+      'chatWindow',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes`
+    );
+  }
 </script>
 </main>
 
