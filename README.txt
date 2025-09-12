@@ -1,28 +1,35 @@
-# login-db-server
+
 
 ## 실행 방법
-1. MySQL에 homspot 데이터베이스와 users 테이블을 준비하세요.
+.env 파일 생성
 
-```sql
-CREATE DATABASE IF NOT EXISTS homspot DEFAULT CHARACTER SET utf8mb4;
-USE homspot;
-CREATE TABLE IF NOT EXISTS users (
-  user_id INT AUTO_INCREMENT PRIMARY KEY,
-  email VARCHAR(100) UNIQUE NOT NULL,
-  password VARCHAR(200) NOT NULL,
-  name VARCHAR(50),
-  time_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASS=
+DB_NAME=homespot
 
-2. .env.example을 복사해 .env로 바꾸고 DB 설정을 채우세요.
+SESSION_SECRET=3f9b1b0ac5c24c0f8f79a6f83d3f9a4c
+PORT=3000
+
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=ap-northeast-2
+SES_FROM=
+
+APP_BASE_URL =http://localhost:3000
+APP_NAME=Homespot
+
+KAKAO_REST_KEY=
+
+//db 생성
+
+mysql dump import => homespot_2025-09-12 다운
+
+-> mysql -u root -p homespot < "본인 homespot_2025-09-12.sql 파일 위치"
 
 3. 설치 및 실행
-```bash
+
 npm install
 npm start
 ```
-
-4. 접속
-- http://localhost:3000/login.html
-- http://localhost:3000/sign.html
