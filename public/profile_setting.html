@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>프로필 설정</title>
+<style>
+  :root{ --bg:#f7f8fb; --panel:#ffffff; --line:#e6e8ee; --text:#0f172a; --muted:#6b7280; --shadow:0 10px 30px rgba(17,24,39,.06); }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 ui-sans-serif,system-ui,'Noto Sans KR',sans-serif}
+  a{color:inherit;text-decoration:none}
+  header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);z-index:20}
+  .wrap{max-width:1000px;margin:0 auto;padding:16px 24px}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .brand{display:flex;gap:10px;align-items:center;font-weight:800}
+  .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#22c1c3,#3a7bd5)}
+  .right{margin-left:auto;display:flex;gap:10px}
+  .btn{padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer}
+  .btn.primary{background:#2563eb;color:#fff;border-color:transparent}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.08)}
+  .pill{border-radius:999px;padding:6px 10px;border:1px solid var(--line);background:#fff;font-size:12px;color:#334155}
+  .page-title{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+
+  .grid{display:grid;gap:16px;grid-template-columns: 320px 1fr}
+  @media (max-width: 900px){.grid{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
+  .muted{color:var(--muted)}
+
+  .avatar{width:140px;height:140px;border-radius:16px;border:1px solid var(--line);object-fit:cover;background:#f3f4f6;display:block}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+  .field label{font-size:13px;color:#475569}
+  .field input, .field textarea{padding:12px 14px;border:1px solid var(--line);border-radius:12px;outline:none}
+  .field input[readonly]{background:#f9fafb;color:#475569}
+  textarea{min-height:82px;resize:vertical}
+
+  .danger{border-color:#fee2e2;background:linear-gradient(0deg,#fff,#fff)}
+  .danger .btn{background:#ef4444;color:#fff;border-color:transparent}
+
+  .rowline{display:flex;gap:10px;align-items:center}
+  .rowline .grow{flex:1}
+
+  .help{font-size:12px;color:#6b7280}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap row">
+    <div class="brand"><div class="logo"></div>프로필 설정</div>
+    <div class="right">
+      <a class="btn" id="btnDashboard" href="#">대시보드</a>
+      <a class="btn" href="/logout">로그아웃</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="page-title">
+    <h2 style="margin:10px 0 6px">내 계정</h2>
+    <span class="pill" id="pill-role">역할</span>
+  </div>
+
+  <section class="grid" style="margin-top:12px">
+    <!-- 좌측: 사진/보안 -->
+    <div class="card">
+      <h3 style="margin:0 0 10px">프로필 사진</h3>
+      <img id="avatar" class="avatar" alt="프로필" src=""/>
+      <form id="photoForm" enctype="multipart/form-data" style="margin-top:10px">
+        <input type="file" name="photo" accept="image/*" id="photoInput"/>
+        <button class="btn" type="submit" style="margin-top:8px">사진 업लोड</button>
+      </form>
+      <div class="help">최대 5MB, JPG/PNG</div>
+
+      <hr style="margin:16px 0;border:none;border-top:1px solid var(--line)"/>
+
+      <h3 style="margin:0 0 10px">비밀번호 재설정</h3>
+      <p class="muted" id="pwdHelp">등록된 이메일로 재설정 링크를 보냅니다.</p>
+      <form id="pwdForm" action="/find-pwd" method="post">
+        <input type="hidden" name="userid" id="pwdUserId"/>
+        <input type="hidden" name="email" id="pwdEmail"/>
+        <button class="btn" type="submit">재설정 링크 보내기</button>
+      </form>
+    </div>
+
+    <!-- 우측: 기본 정보/연락처/탈퇴 -->
+    <div class="card">
+      <h3 style="margin:0 0 10px">기본 정보</h3>
+      <div class="field">
+        <label>아이디</label>
+        <input id="username" type="text" readonly />
+      </div>
+      <div class="field">
+        <label>이메일</label>
+        <div class="rowline">
+          <input id="email" type="text" class="grow" readonly />
+          <button class="btn" id="copyEmail" type="button">복사</button>
+        </div>
+      </div>
+      <form id="nickForm">
+        <div class="field">
+          <label>닉네임 (표시 이름)</label>
+          <input id="nickname" name="nickname" type="text" placeholder="예: 집요정, 홈스팟왕" maxlength="64"/>
+        </div>
+        <button class="btn" type="submit">닉네임 저장</button>
+      </form>
+
+      <hr style="margin:16px 0;border:none;border-top:1px solid var(--line)"/>
+
+      <h3 style="margin:0 0 10px">연락처</h3>
+      <form id="contactForm">
+        <div class="field">
+          <label>전화번호</label>
+          <input id="phone" name="phone" placeholder="예: 010-1234-5678"/>
+        </div>
+        <div class="field">
+          <label>카카오톡 ID</label>
+          <input id="kakao" name="contact_kakao" placeholder="예: homespot_user"/>
+        </div>
+        <div class="field">
+          <label>연락 가능 시간</label>
+          <input id="hours" name="contact_hours" placeholder="예: 평일 10:00~19:00"/>
+        </div>
+        <div class="field">
+          <label>소개</label>
+          <textarea id="bio" name="bio" placeholder="예: 이사 일정으로 집을 알아보고 있어요."></textarea>
+        </div>
+        <button class="btn" type="submit">연락처 저장</button>
+      </form>
+
+      <hr style="margin:16px 0;border:none;border-top:1px solid var(--line)"/>
+
+      <div class="card danger" style="margin:-2px;padding:14px">
+        <h3 style="margin:0 0 6px">회원 탈퇴</h3>
+        <p class="help">탈퇴 시 계정 정보가 삭제되며 복구할 수 없습니다.</p>
+        <form id="deleteForm">
+          <div class="rowline" style="margin-top:8px">
+            <input class="grow" name="confirm" id="confirmDelete" placeholder="탈퇴합니다 를 입력"/>
+            <button class="btn" type="submit">탈퇴</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(async function init(){
+  // 1) 내 프로필 로드 (확장)
+  const r = await fetch('/api/profile/me', {credentials:'include'});
+  if(!r.ok){ location.href='login.html'; return; }
+  const j = await r.json();
+  if(!j.ok){ location.href='login.html'; return; }
+
+  const role = j.role;
+  const p = j.profile || {};
+
+  // 헤더 역할/대시보드 이동
+  document.getElementById('pill-role').textContent = role === 'agent' ? '중개사' : '세입자';
+  document.getElementById('btnDashboard').href = role === 'agent' ? 'mainpageagent.html' : 'tenant_main.html';
+
+  // 기본 정보
+  document.getElementById('username').value = p.user_name || '';
+  document.getElementById('email').value    = p.email     || '';
+  document.getElementById('nickname').value = p.nickname  || '';
+
+  // 아바타
+  const img = document.getElementById('avatar');
+  if (p.profile_url){
+    img.src = p.profile_url.startsWith('http') ? p.profile_url : ('/uploads/' + p.profile_url);
+  } else {
+    img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140"><rect width="100%" height="100%" fill="#f3f4f6"/><text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="14">No Image</text></svg>');
+  }
+
+  // 비밀번호 재설정 hidden
+  document.getElementById('pwdUserId').value = p.user_name || '';
+  document.getElementById('pwdEmail').value  = p.email     || '';
+
+  // 연락처 값 채우기
+  document.getElementById('phone').value  = p.phone || '';
+  document.getElementById('kakao').value  = p.contact_kakao || '';
+  document.getElementById('hours').value  = p.contact_hours || '';
+  document.getElementById('bio').value    = p.bio || '';
+})().catch(console.error);
+
+// 닉네임 저장
+document.getElementById('nickForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const nickname = document.getElementById('nickname').value.trim();
+  if(!nickname) return alert('닉네임을 입력하세요');
+  const r = await fetch('/api/profile/nickname', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nickname })
+  });
+  const d = await r.json().catch(()=>({ok:false}));
+  alert(d && d.ok ? '저장되었습니다' : (d.message || '저장 실패'));
+});
+
+// 사진 업로드
+document.getElementById('photoForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(e.currentTarget);
+  const r = await fetch('/api/profile/photo', { method:'POST', body: fd });
+  const d = await r.json().catch(()=>({ok:false}));
+  if(d && d.ok){
+    const img = document.getElementById('avatar');
+    img.src = d.url.startsWith('http') ? d.url : ('/uploads/' + d.url);
+    alert('업로드 완료');
+  }else{
+    alert(d.message || '업로드 실패');
+  }
+});
+
+// 이메일 복사
+document.getElementById('copyEmail').addEventListener('click', ()=>{
+  const v = document.getElementById('email').value;
+  navigator.clipboard.writeText(v);
+  alert('이메일을 복사했습니다');
+});
+
+// 연락처 저장
+document.getElementById('contactForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const payload = {
+    phone:         document.getElementById('phone').value.trim() || null,
+    contact_kakao: document.getElementById('kakao').value.trim() || null,
+    contact_hours: document.getElementById('hours').value.trim() || null,
+    bio:           document.getElementById('bio').value.trim() || null
+  };
+  const r = await fetch('/api/profile/contact', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const d = await r.json().catch(()=>({ok:false}));
+  alert(d && d.ok ? '저장되었습니다' : '저장 실패');
+});
+
+// 회원 탈퇴
+document.getElementById('deleteForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const v = document.getElementById('confirmDelete').value.trim();
+  if(v !== '탈퇴합니다') return alert("문구를 정확히 입력하세요: 탈퇴합니다");
+  if(!confirm('정말 탈퇴하시겠습니까?')) return;
+  const r = await fetch('/api/profile/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ confirm: v }) });
+  const d = await r.json().catch(()=>({ok:false}));
+  if(d && d.ok){ alert('탈퇴 처리되었습니다. 이용해 주셔서 감사합니다.'); location.href='login.html'; }
+  else alert(d.message || '탈퇴 실패');
+});
+</script>
+</body>
+</html>

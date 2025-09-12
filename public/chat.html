@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>채팅</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <div id="partnerCard" class="partner" style="display:none">
+  <img class="avatar" id="ptAvatar" src="" alt="상대"/>
+  <div class="meta">
+    <div id="ptName" style="font-weight:700"></div>
+    <small id="ptContact"></small>
+  </div>
+</div>
+
+  <style>
+    :root{
+      --bg:#f7f8fa;
+      --line:#e8ebf0;
+      --text:#222;
+      --muted:#7a7f87;
+      --green:#c8f7c5;
+      --green-deep:#52c41a;
+      --white:#fff;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+    }
+
+    .wrap{
+      height:100vh;
+      display:flex;
+      gap:0;
+    }
+
+    /* 왼쪽: 채팅목록 */
+    .left{
+      width:300px;
+      max-width:360px;
+      min-width:260px;
+      border-right:1px solid var(--line);
+      background:#fff;
+      display:flex;
+      flex-direction:column;
+    }
+    .left .head{
+      padding:14px 16px;
+      border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between;
+      font-weight:700;
+    }
+    .dot{
+      width:10px; height:10px; border-radius:50%;
+      background:#06c755; display:inline-block;
+    }
+    .list{
+      overflow:auto; flex:1;
+    }
+    .chat-item{
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      cursor:pointer;
+    }
+    .chat-item:hover{ background:#fafafa; }
+    .chat-item-title{ font-weight:600; }
+    .chat-item-last{ font-size:12px; color:var(--muted); margin-top:4px; }
+
+    /* 오른쪽: 채팅창 */
+    .right{
+      flex:1; display:flex; flex-direction:column; min-width:0;
+      background:#fff;
+    }
+    /* 매물 메타 */
+    #roomMeta{
+      display:none;
+      padding:12px 16px;
+      border-bottom:1px solid var(--line);
+      background:#fcfcfc;
+    }
+    #rmTitle{ font-weight:700; }
+    #rmAddr { font-size:12px; color:var(--muted); margin-top:2px; }
+
+    /* 메시지 영역 */
+    #messages{
+      flex:1;
+      overflow:auto;
+      padding:16px 16px 24px;
+      background:var(--bg);
+    }
+    .message-bubble{
+      max-width:70%;
+      width:fit-content;
+      margin:8px 0;
+      padding:10px 12px;
+      border-radius:18px;
+      word-break:break-word;
+      line-height:1.35;
+      font-size:14px;
+    }
+    /* tenant(user)=오른쪽, agent=왼쪽 (역할 구분이 아닌 타입 고정) */
+    .message-bubble.user{
+      margin-left:auto;
+      background:var(--green);
+    }
+    .message-bubble.agent{
+      margin-right:auto;
+      background:#fff;
+      border:1px solid #eee;
+    }
+
+    /* 입력창 */
+    .input{
+      display:flex; gap:8px;
+      padding:10px; border-top:1px solid var(--line);
+      background:#fff;
+    }
+    .input input{
+      flex:1; height:40px; border:1px solid var(--line); border-radius:12px;
+      padding:0 12px; outline:none; font-size:14px;
+      background:#fff;
+    }
+    .input button{
+      border:none; border-radius:12px; padding:0 16px;
+      background:var(--green-deep); color:#fff; font-weight:600;
+      cursor:pointer;
+    }
+    .input button:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .partner{
+      display:none; padding:12px 16px; border-bottom:1px solid var(--line); background:#fff;
+      display:flex; align-items:center; gap:12px;
+    }
+    .partner .avatar{ width:40px; height:40px; border-radius:50%; object-fit:cover; background:#eee; }
+    .partner .meta{ display:flex; flex-direction:column; }
+    .partner .meta small{ color:#6b7280; }
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- 좌측: 채팅 목록 -->
+    <aside class="left">
+      <div class="head">
+        <span>채팅 목록</span>
+        <span class="dot" title="online"></span>
+      </div>
+      <div class="list chat-list">
+        <!-- 동적 삽입: .chat-item -->
+      </div>
+    </aside>
+
+    <!-- 우측: 채팅 창 -->
+    <main class="right">
+      <!-- 방 메타(매물 정보) -->
+      <div id="roomMeta">
+        <div id="rmTitle"></div>
+        <div id="rmAddr"></div>
+      </div>
+      <!-- 메시지 -->
+      <div class="messages" id="messages"></div>
+      <!-- 입력 -->
+      <div class="input">
+        <input type="text" placeholder="메시지를 입력하세요..." />
+        <button type="button">전송</button>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const $  = (s) => document.querySelector(s);
+      const qs = new URLSearchParams(location.search);
+      const qListingId = qs.get('listing_id'); // 상세 → 채팅 버튼으로 들어왔을 때만 존재
+
+      const listBox = document.querySelector('.chat-list');
+      const msgBox  = $('#messages');
+      const input   = document.querySelector('.input input');
+      const sendBtn = document.querySelector('.input button');
+
+      let currentRoomId = null;
+      let lastMsgId = 0;
+      let pollTimer = null;
+
+      function addBubble(senderType, text){
+        const el = document.createElement('div');
+        el.className = 'message-bubble ' + (senderType === 'user' ? 'user' : 'agent');
+        el.textContent = text;
+        msgBox.appendChild(el);
+        msgBox.scrollTop = msgBox.scrollHeight;
+      }
+
+      async function ensureRoomFromListing(){
+        if (!qListingId) return;
+        const res = await fetch('/api/chat/room', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ listing_id: Number(qListingId) })
+        });
+        const j = await res.json();
+        if (!j.ok){ alert('방 생성 실패: ' + (j.error || '')); return; }
+        currentRoomId = j.room.room_id;
+      }
+
+      async function loadRooms(){
+        const res = await fetch('/api/chat/rooms');
+        const j = await res.json();
+        if (!j.ok) return;
+
+        // 기존 항목 제거
+        listBox.querySelectorAll('.chat-item').forEach(n => n.remove());
+
+        (j.items || []).forEach(r => {
+          const item = document.createElement('div');
+          item.className = 'chat-item';
+          item.innerHTML = `
+            <div class="chat-item-title">${r.listing_title ? `매물: ${r.listing_title}` : '대화'}</div>
+            <div class="chat-item-last">${r.last_text ? r.last_text : ''}</div>
+          `;
+          item.addEventListener('click', () => openRoom(r.room_id));
+          listBox.appendChild(item);
+        });
+      }
+
+      async function loadRoomMeta(roomId){
+        const metaBox = document.getElementById('roomMeta');
+        const tEl = document.getElementById('rmTitle');
+        const aEl = document.getElementById('rmAddr');
+
+        const res = await fetch(`/api/chat/room-meta?room_id=${roomId}`);
+        const j = await res.json();
+        if (!j.ok){ metaBox.style.display='none'; return; }
+
+        if (j.meta){
+          tEl.textContent = `매물: ${j.meta.title || '(제목 없음)'}  (#${j.meta.listing_id})`;
+          aEl.textContent = j.meta.addr || '';
+        } else {
+          tEl.textContent = '매물 정보 없음';
+          aEl.textContent = '';
+        }
+        metaBox.style.display = 'block';
+      }
+
+      async function openRoom(roomId){
+        currentRoomId = roomId;
+        lastMsgId = 0;
+        msgBox.innerHTML = '';
+        await loadRoomMeta(roomId);
+        await loadPartner(roomId);
+        await pullMessages();
+        restartPolling();
+      }
+
+      async function pullMessages(){
+        if (!currentRoomId) return;
+        const res = await fetch(`/api/chat/messages?room_id=${currentRoomId}&since_id=${lastMsgId}`);
+        const j = await res.json();
+        if (!j.ok) return;
+        for (const m of j.items){
+          addBubble(m.sender_type, m.message_text);
+          if (m.message_id > lastMsgId) lastMsgId = m.message_id;
+        }
+      }
+
+      function restartPolling(){
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(pullMessages, 2000);
+      }
+
+      async function sendMessage(){
+        const text = (input.value || '').trim();
+        if (!text || !currentRoomId) return;
+        sendBtn.disabled = true;
+        try{
+          const res = await fetch('/api/chat/messages', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ room_id: currentRoomId, text })
+          });
+          const j = await res.json();
+          if (j.ok){
+            input.value = '';
+            // 로컬 에코 금지: 서버 반영 후 pull로만 표시
+            await pullMessages();
+          }else{
+            alert('전송 실패');
+          }
+        } finally {
+          sendBtn.disabled = false;
+          input.focus();
+        }
+      }
+
+      // 초기화
+      (async function init(){
+        await ensureRoomFromListing(); // 상세 → 채팅 버튼일 때만 방 보장
+        await loadRooms();
+
+        // listing_id로 들어온 경우에만 자동 오픈
+        if (currentRoomId) await openRoom(currentRoomId);
+
+        sendBtn.addEventListener('click', sendMessage);
+        input.addEventListener('keydown', (e)=>{ if (e.key === 'Enter'){ e.preventDefault(); sendMessage(); } });
+
+        // 목록은 10초마다 갱신 (새 문의 표시)
+        setInterval(loadRooms, 10000);
+      })();
+    })();
+
+    async function loadPartner(roomId){
+      try{
+        const res = await fetch(`/api/chat/room-partner?room_id=${roomId}`);
+        const j = await res.json();
+        const card = document.getElementById('partnerCard');
+        if(!j || !j.partner){ card.style.display='none'; return; }
+        const p = j.partner;
+        document.getElementById('ptAvatar').src =
+          p.profile_url ? (p.profile_url.startsWith('http')? p.profile_url : '/uploads/'+p.profile_url)
+                        : 'data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="100%" height="100%" fill="#e5e7eb"/></svg>');
+        document.getElementById('ptName').textContent = p.nickname || p.user_name || '(이름 없음)';
+        document.getElementById('ptContact').textContent =
+          [p.phone, p.contact_kakao ? `카카오 ${p.contact_kakao}` : null, p.contact_hours].filter(Boolean).join(' · ');
+        card.style.display = 'flex';
+      }catch(e){ console.error(e); }
+    }
+
+  </script>
+</body>
+</html>

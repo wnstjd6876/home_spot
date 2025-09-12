@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>홈스팟 – 내 관심목록</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --line: #e6e8ee;
+      --text: #0f172a;
+      --muted: #6b7280;
+      --shadow: 0 10px 30px rgba(17, 24, 39, 0.06);
+      --accent: #2563eb;
+      --accent-2: #4f46e5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.55 ui-sans-serif, system-ui, "Noto Sans KR", sans-serif;
+    }
+    a { color: inherit; text-decoration: none; }
+    header { position: sticky; top: 0; z-index: 20; background: #fff; border-bottom: 1px solid var(--line); }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 16px 24px; }
+    .row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+    .logo { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #2563eb, #8b5cf6); }
+    .right { margin-left: auto; display: flex; gap: 10px; }
+    .btn {
+      padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px;
+      background: #fff; cursor: pointer; transition: .15s ease;
+    }
+    .btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
+    .btn.danger { background: #ef4444; color:#fff; border-color: transparent; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+    .btn.ghost { background: #fff; color: var(--text); }
+    .btn.icon { padding: 8px 10px; border-radius: 999px; }
+
+    .section-title { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+    .section-title h1 { margin: 0; font-size: 22px; }
+
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .select, .search {
+      border: 1px solid var(--line); border-radius: 12px; background:#fff; padding: 10px 12px;
+    }
+    .search { display:flex; gap:8px; align-items:center; }
+    .search input { border:0; outline:0; background:transparent; min-width:220px; }
+
+    .grid { display: grid; gap: 16px; margin-top: 14px; }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    @media (max-width: 1024px) { .grid-3 { grid-template-columns: 1fr; } }
+
+    .card {
+      background:#fff; border:1px solid var(--line); border-radius:16px; box-shadow: var(--shadow);
+      overflow: hidden; display:grid; grid-template-columns:160px 1fr; min-height:140px; position:relative;
+    }
+    .thumb { background:#f1f5f9; border-right:1px solid var(--line); }
+    .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .body { padding:14px; display:flex; flex-direction:column; gap:6px; }
+    .title { font-weight:800; font-size:16px; margin:0; }
+    .meta { color:var(--muted); font-size:13px; display:flex; gap:10px; flex-wrap:wrap; }
+    .price { font-weight:900; font-size:16px; margin-top:4px; }
+    .badges { display:flex; gap:6px; flex-wrap:wrap; }
+    .badge { font-size:12px; border:1px solid var(--line); padding:4px 8px; border-radius: 999px; background:#fff; color:#334155; }
+    .badge.deal { background:#eef2ff; border-color:#c7d2fe; color:#3730a3; }
+    .badge.type { background:#ecfeff; border-color:#a5f3fc; color:#155e75; }
+
+    .card .actions {
+      position:absolute; right:10px; top:10px; display:flex; gap:8px;
+    }
+    .heart {
+      width:36px; height:36px; border-radius:999px; border:1px solid var(--line); background:#fff; display:grid; place-items:center; cursor:pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,.06);
+    }
+    .heart.fav { color:#ef4444; border-color:#fca5a5; background:#fff0f0; }
+
+    .empty {
+      padding: 20px; border:1px dashed var(--line); border-radius: 16px; background:#fff; color:var(--muted); text-align:center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap row">
+    <div class="brand">
+      <div class="logo"></div>
+      홈스팟
+    </div>
+    <nav class="right">
+      <a class="btn" href="tenant_main.html">홈</a>
+      <a class="btn" href="login.html">로그아웃</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="section-title">
+    <h1>내 관심목록</h1>
+    <div class="toolbar">
+      <div class="select">
+        <label for="sort" style="color:#64748b; font-size:12px; margin-right:6px;">정렬</label>
+        <select id="sort">
+          <option value="recent">최근 추가순</option>
+          <option value="price_asc">가격 낮은순</option>
+          <option value="price_desc">가격 높은순</option>
+          <option value="area_desc">면적 큰순</option>
+        </select>
+      </div>
+      <div class="select">
+        <label for="ptype" style="color:#64748b; font-size:12px; margin-right:6px;">유형</label>
+        <select id="ptype">
+          <option value="">전체</option>
+          <option value="apartment">아파트</option>
+          <option value="officetel">오피스텔</option>
+          <option value="rowhouse">연립·다세대</option>
+          <option value="detached">단독주택</option>
+        </select>
+      </div>
+      <div class="search">
+        <span style="color:#9aa1ac">🔎</span>
+        <input id="q" placeholder="제목 · 주소로 필터"/>
+      </div>
+      <button class="btn ghost" id="btnClear">필터 초기화</button>
+    </div>
+  </div>
+
+  <section id="grid" class="grid grid-3" style="margin-top:12px">
+    <!-- 동적 카드 렌더 -->
+  </section>
+
+  <div id="empty" class="empty" style="display:none">아직 찜한 매물이 없어요. 마음에 드는 매물을 하트로 저장해보세요!</div>
+</main>
+
+<script>
+  // ------------ helpers ------------
+  const $ = (s,p=document)=>p.querySelector(s);
+  const $$ = (s,p=document)=>Array.from(p.querySelectorAll(s));
+
+  function money10kToKRW(n){
+    if(n==null || isNaN(n)) return null;
+    n = Number(n);
+    const eok = Math.floor(n / 10000);
+    const man = n % 10000;
+    if(eok>0 && man>0) return `${eok}억 ${man.toLocaleString()}만`;
+    if(eok>0)           return `${eok}억`;
+    return `${man.toLocaleString()}만`;
+  }
+  function priceLabel(l){
+    if(l.deal_type==='sale')   return l.price_sale_10k!=null ? `매매 ${money10kToKRW(l.price_sale_10k)}` : '-';
+    if(l.deal_type==='jeonse') return l.deposit_10k!=null    ? `전세 ${money10kToKRW(l.deposit_10k)}`   : '-';
+    if(l.deal_type==='monthly'){
+      const m10k = (l.rent_effective_monthly_10k ?? l.rent_10k ?? (l.rent_annual_10k!=null ? Math.ceil(l.rent_annual_10k/12) : null));
+      const dep  = l.deposit_10k!=null ? money10kToKRW(l.deposit_10k) : null;
+      const rent = m10k!=null ? money10kToKRW(m10k) : null;
+      if(dep && rent) return `월세 ${dep} / ${rent}`;
+      if(rent)        return `월세 ${rent}`;
+      if(dep)         return `보증금 ${dep}`;
+      return '-';
+    }
+    if(l.deal_type==='presale_right')   return '분양권';
+    if(l.deal_type==='occupancy_right') return '입주권';
+    return '-';
+  }
+  function normalizeURL(u){
+    if(!u) return null;
+    if(/^https?:\/\//i.test(u) || /^data:/i.test(u)) return u;
+    if(u.startsWith('/uploads/')) return u;
+    return '/uploads/' + u.replace(/^\/+/, '');
+  }
+  function areaPick(l){
+    return (l.area_key_m2 ?? l.gross_area_m2 ?? l.area_m2) ?? null;
+  }
+  function addrLine(l){
+    return [l.sigungu, l.road_name, l.lot_no].filter(Boolean).join(' ') || l.full_addr || '';
+  }
+
+  // ------------ render card ------------
+  function cardHTML(l){
+    const img = normalizeURL(l.cover_image_url || (l.images && l.images[0]?.image_url));
+    const price = priceLabel(l);
+    const area  = areaPick(l);
+    const addr  = addrLine(l);
+    const href  = `listing_detail.html?id=${encodeURIComponent(l.listing_id)}`;
+
+    return `
+      <article class="card" data-id="${l.listing_id}">
+        <a class="thumb" href="${href}" aria-label="${l.title || '상세보기'}">
+          <img src="${img || 'https://picsum.photos/seed/hs_'+l.listing_id+'/600/400'}" alt="thumb">
+        </a>
+        <div class="body">
+          <a class="title" href="${href}">${l.title || '(제목 없음)'}</a>
+          <div class="badges">
+            <span class="badge deal">${l.deal_type || '-'}</span>
+            <span class="badge type">${l.property_type || '-'}</span>
+            ${l.built_year ? `<span class="badge">준공 ${l.built_year}</span>` : ''}
+            ${area ? `<span class="badge">전용 ${Number(area)}㎡</span>` : ''}
+          </div>
+          <div class="price">${price}</div>
+          <div class="meta">
+            <span>${addr}</span>
+            ${l.floor != null ? `<span>· ${l.floor}층</span>` : ''}
+            ${l.rooms != null ? `<span>· 방 ${l.rooms}</span>` : ''}
+          </div>
+        </div>
+        <div class="actions">
+          <button class="heart fav" title="찜 해제" aria-label="찜 해제">❤</button>
+        </div>
+      </article>
+    `;
+  }
+
+  // ------------ data + UI ------------
+  let allFavs = []; // 서버에서 받아온 원본
+  let viewFavs = []; // 필터/정렬 적용본
+
+  async function fetchFavorites(){
+    const r = await fetch('/api/favorites');
+    if(r.status === 401){ alert('로그인이 필요합니다.'); location.href='/login.html'; return; }
+    const j = await r.json();
+    if(!j.ok){ throw new Error(j.error || 'load_failed'); }
+    // 서버 예시: { ok:true, listings: rows }
+    const arr = Array.isArray(j.listings) ? j.listings : (Array.isArray(j) ? j : []);
+    allFavs = arr;
+    applyFilters();
+  }
+
+  function applyFilters(){
+    const type = $('#ptype').value;
+    const q = $('#q').value.trim().toLowerCase();
+    const sort = $('#sort').value;
+
+    viewFavs = allFavs.filter(l=>{
+      const typeOk = !type || l.property_type === type;
+      const text = `${l.title||''} ${addrLine(l)||''}`.toLowerCase();
+      const qOk = !q || text.includes(q);
+      return typeOk && qOk;
+    });
+
+    // 정렬
+    viewFavs.sort((a,b)=>{
+      if (sort==='recent') {
+        return (b.fav_created_at ? new Date(b.fav_created_at).getTime() : 0)
+            - (a.fav_created_at ? new Date(a.fav_created_at).getTime() : 0);
+        }
+      if(sort==='price_asc'){ return (a.price_key_10k??0) - (b.price_key_10k??0); }
+      if(sort==='price_desc'){ return (b.price_key_10k??0) - (a.price_key_10k??0); }
+      if(sort==='area_desc'){ return (Number(areaPick(b))||0) - (Number(areaPick(a))||0); }
+      return 0;
+    });
+
+    renderGrid();
+  }
+
+  function renderGrid(){
+    const grid = $('#grid'); const empty = $('#empty');
+    if(viewFavs.length===0){
+      grid.innerHTML = '';
+      empty.style.display = '';
+      return;
+    }
+    empty.style.display = 'none';
+    grid.innerHTML = viewFavs.map(cardHTML).join('');
+  }
+
+  async function removeFavorite(listingId){
+    const r = await fetch(`/api/listings/${listingId}/favorite`, { method:'DELETE' });
+    if(r.status === 401){ alert('로그인이 필요합니다.'); location.href='/login.html'; return; }
+    const j = await r.json();
+    if(!j.ok){ throw new Error(j.error || 'remove_failed'); }
+    // 로컬 상태에서 제거
+    allFavs = allFavs.filter(x=> String(x.listing_id) !== String(listingId));
+    applyFilters();
+  }
+
+  // ------------ events ------------
+  $('#sort').addEventListener('change', applyFilters);
+  $('#ptype').addEventListener('change', applyFilters);
+  $('#q').addEventListener('input', applyFilters);
+  $('#btnClear').addEventListener('click', ()=>{
+    $('#sort').value = 'recent';
+    $('#ptype').value = '';
+    $('#q').value = '';
+    applyFilters();
+  });
+
+  // 카드 내 버튼 위임(찜 해제)
+  document.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.heart');
+    if(!btn) return;
+    const card = e.target.closest('.card');
+    if(!card) return;
+    const id = card.getAttribute('data-id');
+    removeFavorite(id).catch(err=>alert(err.message||'삭제 실패'));
+  });
+
+  // ------------ init ------------
+  fetchFavorites().catch(err=>{
+    console.error(err);
+    $('#grid').innerHTML = '';
+    $('#empty').style.display = '';
+  });
+</script>
+
+</body>
+</html>

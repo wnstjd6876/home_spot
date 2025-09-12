@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>HomeSpot - 전체 매물 검색</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* 다크 테마 및 패널/리스트 톤은 기존 검색 페이지들과 동일 */
+    :root{
+      --bg:#0f1115; --panel:#151922; --panel-2:#1a2030; --text:#e7ecf3; --muted:#9aa7b2;
+      --accent:#4ea1ff; --accent-2:#2dd4bf; --chip:#22283a; --chip-on:#2b3854; --bd:#2a3142;
+    }
+    *{ box-sizing:border-box }
+    html,body{ height:100%; margin:0; background:var(--bg); color:var(--text);
+      font-family:ui-sans-serif,system-ui,Apple SD Gothic Neo,Malgun Gothic,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+    #app{ display:flex; height:100vh; width:100vw; overflow:hidden; }
+
+    /* 좌측 패널 */
+    #panel{ width:26vw; min-width:320px; max-width:560px;
+      background:linear-gradient(180deg,var(--panel) 0%, var(--panel-2) 100%);
+      border-right:1px solid var(--bd); display:flex; flex-direction:column; overflow:hidden; }
+    #panelScroll{ flex:1; display:flex; flex-direction:column; overflow:hidden; -webkit-overflow-scrolling:touch; padding:12px 12px 0; }
+
+    /* 지도 */
+    #mapWrap{ flex:1; position:relative } #map{ position:absolute; inset:0 }
+
+    /* 공통 UI */
+    .search-row{ display:flex; gap:8px; align-items:center }
+    .search-row input[type="text"]{ flex:1; height:40px; background:#0d111a; color:var(--text);
+      border:1px solid var(--bd); border-radius:10px; padding:0 12px; outline:0; }
+    .btn{ height:40px; padding:0 12px; border-radius:10px; border:1px solid var(--bd);
+      background:#111827; color:var(--text); cursor:pointer; transition:transform .02s ease; }
+    .btn:active{ transform:translateY(1px) }
+
+    .group{ display:flex; flex-wrap:wrap; gap:6px }
+    .chip{ padding:8px 12px; border-radius:999px; border:1px solid var(--bd);
+      background:var(--chip); color:var(--muted); cursor:pointer; user-select:none; font-size:13px; }
+    .chip[data-active="1"]{ background:var(--chip-on); color:var(--text); border-color:#3b4966 }
+    .chip[data-variant="radio"]{ border-radius:10px }
+    .chip[data-role="feature"]::before{ content:"#"; color:var(--muted); margin-right:3px }
+
+    .sec{ background:rgba(255,255,255,.02); border:1px solid var(--bd); border-radius:14px }
+    .sec-head{ display:flex; align-items:center; justify-content:space-between; padding:10px 10px 6px; cursor:pointer; user-select:none }
+    .sec-head h3{ margin:0; font-size:14px; color:#c9d3e1; font-weight:600 }
+    .chev{ transition:transform .15s ease; opacity:.9 }
+    .sec-body{ padding:0 10px 10px }
+    .collapsible[data-collapsed="1"] .sec-body{ display:none }
+    .collapsible[data-collapsed="1"] .chev{ transform:rotate(-90deg) }
+
+    /* 결과 리스트 */
+    #results{ display:flex; flex-direction:column; gap:0; min-height:0 }
+    #resultsScroll{ flex:1; min-height:0; overflow-y:auto; padding-bottom:12px }
+    #resultsScroll::-webkit-scrollbar{ width:10px }
+    #resultsScroll::-webkit-scrollbar-thumb{ background:#1f2738; border-radius:8px }
+    #resultsScroll::-webkit-scrollbar-track{ background:transparent }
+    #summary{ display:flex; align-items:center; justify-content:space-between; padding:6px 2px 0 }
+    #total{ font-weight:700 }
+
+    .card{ border:1px solid var(--bd); border-radius:12px; padding:10px; background:rgba(255,255,255,.02);
+      display:grid; grid-template-columns:76px 1fr; gap:10px }
+    .card + .card{ margin-top:8px }
+    .thumb{ width:76px; height:76px; border-radius:10px; background:#0a0f18; border:1px solid #1f2740;
+      display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--muted); overflow:hidden }
+    .title{ font-weight:700; margin-bottom:4px; font-size:15px }
+    .meta{ font-size:12px; color:#a9b6c4; display:flex; gap:10px; flex-wrap:wrap }
+    .price{ color:var(--accent-2); font-weight:800 }
+    .deal-tag{ padding:2px 6px; border-radius:999px; background:#0e1624; border:1px solid #25314a; font-size:11px; color:#c8d5ff }
+    #more{ margin:8px auto 14px; display:block; width:90% }
+
+    /* 마커 말풍선 */
+    .price-pin{ background:#111827ee; border:1px solid #2b3752; color:#e7f2ff; border-radius:10px;
+      padding:4px 8px; font-weight:800; font-size:12px; box-shadow:0 6px 18px rgba(0,0,0,.35); white-space:nowrap }
+
+    /* 상단 고정 */
+    #filtersSticky{ position:sticky; top:0; z-index:3;
+      background:linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%); padding-bottom:6px }
+
+    .sep{ height:8px }
+
+    /* 반응형 */
+    @media (max-width:1200px){ #panel{ width:32vw } }
+    @media (max-width:960px){ #panel{ width:40vw; min-width:0 } }
+    @media (max-width:780px){
+      #app{ flex-direction:column }
+      #panel{ width:100vw; height:50vh; border-right:0; border-bottom:1px solid var(--bd) }
+      #mapWrap{ height:50vh }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- 좌측 패널 -->
+  <aside id="panel">
+    <div id="panelScroll">
+      <div id="filtersSticky">
+        <div class="search-row">
+          <input id="q" type="text" placeholder="지역/도로명/키워드 검색…" />
+          <button class="btn" id="btnSearch">검색</button>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 매물 유형 (멀티 선택) -->
+        <div class="sec collapsible" data-collapsed="0">
+          <div class="sec-head" tabindex="0" aria-expanded="true">
+            <h3>매물 유형</h3><span class="chev">▾</span>
+          </div>
+          <div class="sec-body">
+            <div id="grpType" class="group" data-mode="multi">
+              <span class="chip" data-key="type" data-value="apartment"  data-active="1">아파트</span>
+              <span class="chip" data-key="type" data-value="officetel" data-active="1">오피스텔</span>
+              <span class="chip" data-key="type" data-value="rowhouse"  data-active="1">연립·다세대</span>
+              <span class="chip" data-key="type" data-value="detached"  data-active="1">단독주택</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 거래 유형 (라디오) -->
+        <div class="sec collapsible" data-collapsed="0">
+          <div class="sec-head" tabindex="0" aria-expanded="true"><h3>거래 유형</h3><span class="chev">▾</span></div>
+          <div class="sec-body">
+            <div id="grpDeal" class="group" data-mode="radio">
+              <span class="chip" data-variant="radio" data-key="deal" data-value="" data-active="1">전체</span>
+              <span class="chip" data-variant="radio" data-key="deal" data-value="sale">매매</span>
+              <span class="chip" data-variant="radio" data-key="deal" data-value="jeonse">전세</span>
+              <span class="chip" data-variant="radio" data-key="deal" data-value="monthly">월세</span>
+              <span class="chip" data-variant="radio" data-key="deal" data-value="presale_right">분양권</span>
+              <span class="chip" data-variant="radio" data-key="deal" data-value="occupancy_right">입주권</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 가격 -->
+        <div class="sec collapsible" data-collapsed="0">
+          <div class="sec-head" tabindex="0" aria-expanded="true"><h3>가격 (10,000원 단위)</h3><span class="chev">▾</span></div>
+          <div class="sec-body">
+            <div id="grpPrice" class="group" data-mode="range">
+              <span class="chip" data-role="price" data-min="" data-max="" data-active="1">전체</span>
+              <span class="chip" data-role="price" data-min="0" data-max="20000">~ 2억</span>
+              <span class="chip" data-role="price" data-min="20000" data-max="40000">2억 ~ 4억</span>
+              <span class="chip" data-role="price" data-min="40000" data-max="60000">4억 ~ 6억</span>
+              <span class="chip" data-role="price" data-min="60000" data-max="">6억+</span>
+              <span class="chip" id="btnPriceCustom">직접입력</span>
+            </div>
+            <div id="priceCustomBox" class="group" style="margin-top:8px; display:none;">
+              <input id="minPrice" type="number" inputmode="numeric" placeholder="최소(예: 20000)" class="btn" style="width:48%;" />
+              <input id="maxPrice" type="number" inputmode="numeric" placeholder="최대(예: 60000)" class="btn" style="width:48%;" />
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 면적 -->
+        <div class="sec collapsible" data-collapsed="0">
+          <div class="sec-head" tabindex="0" aria-expanded="true"><h3>전용/공급 면적 (m²)</h3><span class="chev">▾</span></div>
+          <div class="sec-body">
+            <div id="grpArea" class="group" data-mode="range">
+              <span class="chip" data-role="area" data-min="" data-max="" data-active="1">전체</span>
+              <span class="chip" data-role="area" data-min="0" data-max="33">~ 33</span>
+              <span class="chip" data-role="area" data-min="33" data-max="66">33 ~ 66</span>
+              <span class="chip" data-role="area" data-min="66" data-max="99">66 ~ 99</span>
+              <span class="chip" data-role="area" data-min="99" data-max="">99+</span>
+              <span class="chip" id="btnAreaCustom">직접입력</span>
+            </div>
+            <div id="areaCustomBox" class="group" style="margin-top:8px; display:none;">
+              <input id="minArea" type="number" inputmode="numeric" placeholder="최소 m²" class="btn" style="width:48%;" />
+              <input id="maxArea" type="number" inputmode="numeric" placeholder="최대 m²" class="btn" style="width:48%;" />
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 특징 -->
+        <div class="sec collapsible" data-collapsed="0">
+          <div class="sec-head" tabindex="0" aria-expanded="true"><h3>특징</h3><span class="chev">▾</span></div>
+          <div class="sec-body">
+            <div id="grpFeature" class="group" data-mode="multi">
+              <span class="chip" data-role="feature" data-key="has_parking">주차</span>
+              <span class="chip" data-role="feature" data-key="allow_pet">반려동물</span>
+              <span class="chip" data-role="feature" data-key="is_full_option">풀옵션</span>
+              <span class="chip" data-role="feature" data-key="has_veranda">베란다</span>
+              <span class="chip" data-role="feature" data-key="has_garden">마당</span>
+              <span class="chip" data-role="feature" data-key="is_new_build">신축</span>
+              <span class="chip" data-role="feature" data-key="fee_included">관리비포함</span>
+            </div>
+          </div>
+        </div>
+      </div><!-- /filtersSticky -->
+
+      <!-- 결과 -->
+      <div id="results">
+        <div id="summary">
+          <div id="total">총 0개</div>
+          <div id="viewMeta" style="color:var(--muted); font-size:12px;">뷰포트 기준</div>
+        </div>
+        <div id="resultsScroll">
+          <div id="list"></div>
+          <button id="more" class="btn">더 보기</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 우측 지도 -->
+  <main id="mapWrap"><div id="map"></div></main>
+</div>
+
+<!-- Kakao Map SDK (기존 검색 페이지와 동일 키 위치) -->
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=5970bdf6aec828dc6aa07626ba3794cf&autoload=false&libraries=clusterer"></script>
+
+<script>
+  // ====== 전역 상태 ======
+  let map, clusterer, hoverOverlay=null, hoverEl=null;
+  let isLoading=false, inflight=null, currentPage=1, lastRectKey='', lastQueryKey='';
+
+  // 기본 선택: 모든 유형
+  const selected = {
+    type: new Set(['apartment','officetel','rowhouse','detached']),
+    deal:'', minPrice:'', maxPrice:'', minArea:'', maxArea:'',
+    has_parking:false, allow_pet:false, is_full_option:false, has_veranda:false,
+    has_garden:false, is_new_build:false, fee_included:false,
+  };
+
+  // ====== 유틸 ======
+  const money10k = (n)=>{ if(n==null||isNaN(n))return'-';
+    const won = Number(n)*10000; const eok=Math.floor(won/1e8); const man=Math.floor((won%1e8)/1e4);
+    if(eok>0&&man>0) return `${eok}억 ${man.toLocaleString()}만`;
+    if(eok>0) return `${eok}억`; return `${man.toLocaleString()}만`; };
+  const debounce=(fn,ms=300)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};};
+  function getRect(){ const b=map.getBounds(), sw=b.getSouthWest(), ne=b.getNorthEast(); return [sw.getLng(), sw.getLat(), ne.getLng(), ne.getLat()]; }
+  function ensureOverlay(){ if(hoverOverlay) return; hoverEl=document.createElement('div'); hoverEl.className='price-pin';
+    hoverOverlay=new kakao.maps.CustomOverlay({content:hoverEl, position: map.getCenter(), yAnchor:1}); }
+  function setSummary(t){ document.getElementById('total').textContent=`총 ${Number(t||0).toLocaleString('ko-KR')}개`; }
+
+  // ====== 접이식 ======
+  function initCollapsibles(){
+    document.querySelectorAll('.collapsible .sec-head').forEach(head=>{
+      head.addEventListener('click',()=>{ const sec=head.parentElement; const on=sec.dataset.collapsed!=='1';
+        sec.dataset.collapsed= on?'1':'0'; head.setAttribute('aria-expanded', (!on).toString()); });
+      head.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); head.click(); } });
+    });
+  }
+
+  // ====== 필터 ======
+  function bindFilterChips(){
+    // 매물 유형(멀티 토글)
+    document.getElementById('grpType').addEventListener('click',(e)=>{
+      const chip=e.target.closest('.chip'); if(!chip||chip.dataset.key!=='type') return;
+      const v=chip.dataset.value;
+      const on = chip.dataset.active==='1';
+      chip.dataset.active = on?'0':'1';
+      if(on) selected.type.delete(v); else selected.type.add(v);
+      forceReload();
+    });
+
+    // 거래(라디오)
+    document.getElementById('grpDeal').addEventListener('click',(e)=>{
+      const chip=e.target.closest('.chip'); if(!chip||chip.dataset.key!=='deal') return;
+      [...e.currentTarget.querySelectorAll('.chip')].forEach(c=>c.dataset.active='0');
+      chip.dataset.active='1';
+      selected.deal=chip.dataset.value||'';
+      forceReload();
+    });
+
+    // 가격 프리셋/직접
+    const grpPrice=document.getElementById('grpPrice');
+    grpPrice.addEventListener('click',(e)=>{
+      const chip=e.target.closest('.chip'); if(!chip) return;
+      if(chip.id==='btnPriceCustom'){ document.getElementById('priceCustomBox').style.display='flex';
+        chip.dataset.active = chip.dataset.active==='1'?'0':'1'; return; }
+      if(chip.dataset.role!=='price') return;
+      grpPrice.querySelectorAll('.chip[data-role="price"]').forEach(c=>c.dataset.active='0'); chip.dataset.active='1';
+      selected.minPrice=chip.dataset.min??''; selected.maxPrice=chip.dataset.max??'';
+      document.getElementById('priceCustomBox').style.display='none';
+      document.getElementById('minPrice').value=''; document.getElementById('maxPrice').value='';
+      forceReload();
+    });
+    ['minPrice','maxPrice'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{
+      selected.minPrice=document.getElementById('minPrice').value.trim();
+      selected.maxPrice=document.getElementById('maxPrice').value.trim();
+      document.querySelectorAll('#grpPrice .chip[data-role="price"]').forEach(c=>c.dataset.active='0');
+      forceReload();
+    }));
+
+    // 면적 프리셋/직접
+    const grpArea=document.getElementById('grpArea');
+    grpArea.addEventListener('click',(e)=>{
+      const chip=e.target.closest('.chip'); if(!chip) return;
+      if(chip.id==='btnAreaCustom'){ document.getElementById('areaCustomBox').style.display='flex';
+        chip.dataset.active = chip.dataset.active==='1'?'0':'1'; return; }
+      if(chip.dataset.role!=='area') return;
+      grpArea.querySelectorAll('.chip[data-role="area"]').forEach(c=>c.dataset.active='0'); chip.dataset.active='1';
+      selected.minArea=chip.dataset.min??''; selected.maxArea=chip.dataset.max??'';
+      document.getElementById('areaCustomBox').style.display='none';
+      document.getElementById('minArea').value=''; document.getElementById('maxArea').value='';
+      forceReload();
+    });
+    ['minArea','maxArea'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{
+      selected.minArea=document.getElementById('minArea').value.trim();
+      selected.maxArea=document.getElementById('maxArea').value.trim();
+      document.querySelectorAll('#grpArea .chip[data-role="area"]').forEach(c=>c.dataset.active='0');
+      forceReload();
+    }));
+
+    // 특징(멀티)
+    document.getElementById('grpFeature').addEventListener('click',(e)=>{
+      const chip=e.target.closest('.chip'); if(!chip||chip.dataset.role!=='feature') return;
+      const k=chip.dataset.key;
+      const on = chip.dataset.active==='1';
+      chip.dataset.active = on?'0':'1';
+      selected[k] = !on;
+      forceReload();
+    });
+
+    // 검색 버튼/입력
+    document.getElementById('btnSearch').addEventListener('click', ()=> forceReload());
+    document.getElementById('q').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); forceReload(); }});
+  }
+
+  // ====== 렌더 ======
+  function rowHTML(l){
+    const img = l.cover_image_url || (l.images && l.images[0]?.image_url);
+    const src = normalizeURL(img) || 'https://picsum.photos/seed/hs_'+l.listing_id+'/240/240';
+    const price = dealPrice(l);
+    const addr = [l.sigungu,l.road_name,l.lot_no].filter(Boolean).join(' ') || (l.full_addr||'');
+    const href = `listing_detail.html?id=${encodeURIComponent(l.listing_id)}`;
+
+    return `<a class="card" href="${href}">
+      <div class="thumb"><img src="${src}" alt="" style="width:100%;height:100%;object-fit:cover"/></div>
+      <div>
+        <div class="title">${l.title || '(제목 없음)'}</div>
+        <div class="meta">
+          <span class="deal-tag">${l.deal_type || '-'}</span>
+          <span>${l.property_type || '-'}</span>
+          ${l.built_year ? `<span>· 준공 ${l.built_year}</span>` : ''}
+          ${l.area_key_m2 ? `<span>· 전용 ${Number(l.area_key_m2)}㎡</span>` : ''}
+        </div>
+        <div class="price">${price}</div>
+        <div class="meta">${addr}${l.floor!=null?` · ${l.floor}층`:''}</div>
+      </div>
+    </a>`;
+  }
+
+  function dealPrice(l){
+    if(l.deal_type==='sale'   && l.price_sale_10k!=null) return `매매 ${money10k(l.price_sale_10k)}`;
+    if(l.deal_type==='jeonse' && l.deposit_10k!=null)    return `전세 ${money10k(l.deposit_10k)}`;
+    if(l.deal_type==='monthly'){
+      const m=(l.rent_effective_monthly_10k ?? l.rent_10k ?? (l.rent_annual_10k!=null?Math.ceil(l.rent_annual_10k/12):null));
+      const dep=l.deposit_10k!=null?money10k(l.deposit_10k):null;
+      if(m&&dep) return `월세 ${dep} / ${money10k(m)}`;
+      if(m) return `월세 ${money10k(m)}`;
+      if(dep) return `보증금 ${dep}`;
+    }
+    return '-';
+  }
+
+  function normalizeURL(u){
+    if(!u) return null;
+    if(/^https?:|^data:/i.test(u)) return u;
+    if(u.startsWith('/uploads/')) return u;
+    return '/uploads/'+u.replace(/^\/+/, '');
+  }
+
+  // ====== 지도 ======
+  function initMap(){
+    kakao.maps.load(()=>{
+      map = new kakao.maps.Map(document.getElementById('map'), {
+        center:new kakao.maps.LatLng(37.5665,126.9780), level:7
+      });
+      clusterer = new kakao.maps.MarkerClusterer({ map, averageCenter:true, minLevel:5 });
+      map.addListener('idle', debounce(()=> loadPage(1), 250));
+      loadPage(1);
+    });
+  }
+
+  // ====== 로드 ======
+  function queryKey(){
+    const rect = getRect();
+    const rectKey = rect.map(n=>Number(n).toFixed(5)).join(',');
+    const z = map.getLevel();
+    const q = document.getElementById('q').value.trim();
+    const typeKey = [...selected.type].sort().join(',');
+    const featKey = ['has_parking','allow_pet','is_full_option','has_veranda','has_garden','is_new_build','fee_included']
+      .filter(k=>!!selected[k]).join(',');
+    return [rectKey,z,q,typeKey,selected.deal,selected.minPrice,selected.maxPrice,selected.minArea,selected.maxArea,featKey].join('|');
+  }
+
+  async function loadPage(page=1, opt={}){
+    if(isLoading && inflight){ try{ inflight.abort(); }catch{} }
+    isLoading=true; inflight=new AbortController();
+
+    const rect = getRect();
+    const qkey = queryKey();
+    if(!opt.force && page===currentPage && qkey===lastQueryKey){ isLoading=false; return; }
+
+    const qs = new URLSearchParams({
+      rect: rect.join(','), page: String(page), z: String(map.getLevel())
+    });
+    const q = document.getElementById('q').value.trim(); if(q) qs.set('q', q);
+
+    if(selected.type.size) qs.set('type', [...selected.type].join(','));   // ★ 여러 유형
+    if(selected.deal) qs.set('deal', selected.deal);
+    const addNum=(k,v)=>{ const n=Number(v); if(Number.isFinite(n)&&n>=0) qs.set(k,String(n)); };
+    addNum('minPrice', selected.minPrice); addNum('maxPrice', selected.maxPrice);
+    addNum('minArea', selected.minArea);   addNum('maxArea', selected.maxArea);
+    ['has_parking','allow_pet','is_full_option','has_veranda','has_garden','is_new_build','fee_included']
+      .forEach(k=>{ if(selected[k]) qs.set(k,'1'); });
+
+    try{
+      const res = await fetch(`/api/map/listings?${qs.toString()}`, { signal: inflight.signal });
+      const j = await res.json();
+
+      // 지도 마커
+      clusterer.clear();
+      const markers = (j.markers||[]).map(m=>{
+        const mk = new kakao.maps.Marker({ position:new kakao.maps.LatLng(m.lat,m.lng) });
+        const label = document.createElement('div'); label.className='price-pin'; label.textContent = money10k(m.price_10k);
+        const ov = new kakao.maps.CustomOverlay({ content:label, position: mk.getPosition(), yAnchor:1 });
+        kakao.maps.event.addListener(mk,'mouseover',()=>{ ensureOverlay(); ov.setMap(map); });
+        kakao.maps.event.addListener(mk,'mouseout', ()=>{ ov.setMap(null); });
+        kakao.maps.event.addListener(mk,'click',   ()=>{ location.href=`listing_detail.html?id=${m.listing_id}`; });
+        return mk;
+      });
+      clusterer.addMarkers(markers);
+
+      // 리스트
+      const listEl = document.getElementById('list');
+      if(page===1) listEl.innerHTML='';
+      (j.list || []).forEach(l=>{ listEl.insertAdjacentHTML('beforeend', rowHTML(l)); });
+
+      setSummary(j.total);
+      currentPage = j.page || page;
+      lastQueryKey = qkey;
+
+      // 더보기
+      const moreBtn = document.getElementById('more');
+      if(j.total > (j.page * j.pageSize)) {
+        moreBtn.style.display='block';
+        moreBtn.onclick = ()=> loadPage(currentPage+1, { force:true });
+      } else {                             
+        moreBtn.style.display='none';
+      }
+    } catch(e){
+      console.error(e);
+    } finally{
+      isLoading=false;
+    }
+  }
+
+  function forceReload(){ lastQueryKey=''; loadPage(1,{force:true}); }
+
+  // ====== 부트스트랩 ======
+  window.addEventListener('DOMContentLoaded', ()=>{
+    initCollapsibles();
+    bindFilterChips();
+    if(window.kakao && kakao.maps){ initMap(); }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>비밀번호 찾기</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .find-password-container {
+      background-color: #ffffff;
+      padding: 40px 40px 20px 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      width: 400px;
+      box-sizing: border-box;
+    }
+    .find-password-container h2 {
+      text-align: center;
+      margin-bottom: 24px;
+      color: #333;
+      font-size: 24px;
+      margin-top: -15px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      padding-left: 0;
+      margin-left: 5px;
+    }
+    .form-group input,
+    .btn {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+      box-sizing: border-box;
+      display: block;
+    }
+    .btn {
+      background-color: #d3d3d3;
+      color: #000;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .btn:hover {
+      background-color: #bcbcbc;
+    }
+    .back-link {
+      text-align: center;
+      margin-top: 20px;
+      margin-left: 5px;
+    }
+    .back-link a {
+      color: #000;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="find-password-container">
+    <h2>비밀번호 찾기</h2>
+    <form action="/find-pwd" method="post">
+     <div class="form-group">
+     <label for="userid">아이디:</label>
+      <input type="text" id="userid" name="userid" placeholder="아이디 입력" required />
+      </div>
+      <div class="form-group">
+      <label for="email">이메일:</label>
+      <input type="email" id="email" name="email" placeholder="이메일 입력" required />
+      </div>
+      <button type="submit" class="btn">비밀번호 찾기</button>
+    </form>
+    <div class="back-link">
+      <a href="#" onclick="window.close(); return false;">창 닫기</a>
+    </div>
+    <script>
+  // 비밀번호 찾기: 성공하면 창 닫기
+  document.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const fd = new FormData(form);
+    const res = await fetch(form.action, { method: form.method, body: fd, credentials: 'same-origin' });
+    if (res.ok) {
+      alert('이메일로 비밀번호 재설정 안내를 보냈습니다.');
+      window.opener?.postMessage({type:'find_pwd_done'}, '*');
+      window.close();
+    } else {
+      alert('요청 처리에 실패했습니다.');
+    }
+  });
+</script>
+  </div>
+</body>
+</html>

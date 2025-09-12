@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>공지사항</title>
+<style>
+  body{margin:0;font:15px/1.6 ui-sans-serif,system-ui,'Noto Sans KR',sans-serif;color:#0f172a;background:#fff}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 22px}
+  h1{margin:0 0 8px;font-size:22px}
+  .muted{color:#6b7280}
+  .panel{border:1px solid #e6e8ee;border-radius:12px;padding:16px 18px;background:#fff}
+  pre{white-space:pre-wrap;word-break:break-word;font:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">공지사항</h1>
+  <div class="muted" id="meta"></div>
+  <div class="panel" style="margin-top:12px">
+    <pre id="content">불러오는 중…</pre>
+  </div>
+</div>
+
+<script>
+(function(){
+  const qs = new URLSearchParams(location.search);
+  const id = qs.get('id');
+  async function load(){
+    try{
+      const r = await fetch(`/api/notices/${encodeURIComponent(id)}`, { credentials:'same-origin' });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error('load failed');
+      const n = j.notice;
+      document.getElementById('title').textContent = n.title;
+      document.getElementById('meta').textContent =
+        `게시일 ${new Date(n.created_at).toLocaleString('ko-KR')}` +
+        (n.updated_at ? ` · 수정 ${new Date(n.updated_at).toLocaleString('ko-KR')}` : '');
+      // XSS 방지: textContent/innerText 계열 사용 (pre에 그대로 뿌림)
+      document.getElementById('content').textContent = n.content || '';
+    }catch(e){
+      document.getElementById('content').textContent = '공지사항을 불러오지 못했습니다.';
+      console.error(e);
+    }
+  }
+  load();
+})();
+</script>
+</body>
+</html>

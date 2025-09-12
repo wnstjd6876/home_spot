@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>아이디 찾기</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .find-id-container {
+      background-color: #ffffff;
+      padding: 40px 40px 20px 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 400px;
+    }
+    .find-id-container h2 {
+      text-align: center;
+      margin-top: -15px;
+      margin-bottom: 24px;
+      color: #333;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      margin-left: 5px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background-color: #E0E0E0;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .btn:hover {
+      background-color: #B0B0B0;
+    }
+    .back-link {
+      text-align: center;
+      margin-top: 20px;
+      margin-left: 7px;
+    }
+    .back-link a {
+      color: #000000;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="find-id-container">
+    <h2>아이디 찾기</h2>
+    <form action="/find-id" method="post">
+     <div class="form-group">
+      <label for="email">이메일:</label>
+       <input type="text" id="email" name="email" placeholder="이메일 입력" required />
+      </div>
+      <button type="submit" class="btn">아이디 찾기</button>
+    </form>
+    <div class="back-link">
+      <a href="#" onclick="window.close(); return false;">창 닫기</a>
+    </div>
+  </div>
+  <script>
+  // 아이디 찾기: 성공하면 창 닫기
+  document.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const fd = new FormData(form);
+    const res = await fetch(form.action, { method: form.method, body: fd, credentials: 'same-origin' });
+    if (res.ok) {
+      alert('이메일로 아이디 안내를 보냈습니다.');
+      window.opener?.postMessage({type:'find_id_done'}, '*');
+      window.close();
+    } else {
+      alert('요청 처리에 실패했습니다.');
+    }
+  });
+</script>
+</body>
+</html>

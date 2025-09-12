@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>중개사 회원가입</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #f3f3f3;
+    }
+    .signup-container {
+      width: 420px;
+      background: rgba(255, 255, 255, 0.95);  
+      padding: 40px;
+      border-radius: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+    .signup-container h2 {
+      text-align: center;
+      margin-bottom: 28px;
+      color: #333;
+      font-size: 28px;
+      margin-top: -15px;
+    }
+    .form-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .input-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .input-fields input {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      color: #111;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      outline: none;
+      font-family: Arial, sans-serif;
+    }
+    .input-fields input::placeholder {
+      color: #888;
+      font-weight: normal;
+    }
+    .input-fields input:focus {
+      border-color: #c7759b;
+    }
+    .verify-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      background: #f5f5f5;
+      padding: 10px 12px;
+      position: relative;
+    }
+    .file-label {
+      flex: 1;
+      font-size: 16px;
+      color: #888;
+      font-weight: normal;
+      font-family: Arial, sans-serif;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .verify-button {
+      padding: 10px 18px;
+      font-size: 16px;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #e0e0e0;
+      color: #000;
+      transition: background 0.2s;
+    }
+    .verify-button:hover {
+      background: #b0b0b0;
+    }
+    .signup-button {
+      padding: 14px 16px;
+      font-size: 18px;
+      background: #E0E0E0;
+      border: none;
+      color: black;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 100%;
+      white-space: nowrap;
+    }
+    .signup-button:hover {
+      background: #B0B0B0;
+    }
+    #fileInput {
+      display: none;
+    }
+    .preview {
+      max-height: 120px;
+      max-width: 100%;
+      margin-top: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      object-fit: contain;
+      display: none;
+    }
+    .links {
+      margin-top: 30px;
+      text-align: center;
+      font-size: 16px;
+    }
+    .links a {
+      color: #000;
+      text-decoration: none;
+    }
+    .links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="signup-container">
+    <h2>중개사 회원가입</h2>
+    <form action="/broker-signup" method="post" enctype="multipart/form-data">
+      <div class="form-layout">
+        <div class="input-fields">
+          <input type="text" name="username" placeholder="아이디" required />
+          <input type="password" name="password" placeholder="비밀번호" required />
+          <input type="password" name="confirmPassword" placeholder="비밀번호 확인" required />
+          <input type="text" name="nickname" placeholder="닉네임(표시 이름)" required />
+          <input type="email" name="email" placeholder="이메일" required />
+        </div>
+        <div class="verify-box">
+          <span id="fileLabel" class="file-label">중개사 자격증 등록</span>
+          <button type="button" class="verify-button" id="verifyBtn">자격 인증</button>
+          <input type="file" id="fileInput" name="license" accept="image/*" />  
+        </div>
+        <img id="previewImg" class="preview" alt="미리보기" />
+        <button type="submit" class="signup-button">회원가입</button>
+      </div>
+    </form>
+    <div class="links">
+      <a href="#" onclick="window.close(); return false;">창 닫기</a>
+    </div>
+  </div>
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const fileLabel = document.getElementById("fileLabel");
+    const verifyBtn = document.getElementById("verifyBtn");
+    const previewImg = document.getElementById("previewImg");
+    verifyBtn.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewImg.src = e.target.result;
+          previewImg.style.display = "block";
+          fileLabel.textContent = fileInput.files[0].name;
+          fileLabel.style.color = "#000";
+          verifyBtn.style.display = "none";
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+      }
+    });
+
+      // 중개사 회원가입: 성공하면 창 닫기
+    document.querySelector('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const fd = new FormData(form); // 파일 포함
+      const res = await fetch(form.action, { method: form.method, body: fd, credentials: 'same-origin' });
+      if (res.ok) {
+        alert('회원가입이 접수되었습니다. (승인 후 이용 가능)');
+        window.opener?.postMessage({type:'agent_signup_done'}, '*');
+        window.close();
+      } else {
+        alert('회원가입에 실패했습니다.');
+      }
+    });
+  </script>
+</body>
+</html>

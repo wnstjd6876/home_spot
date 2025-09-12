@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>매물 상세</title>
+  <meta name="description" content="매물 상세 페이지 - 부동산 매물의 사진, 가격, 상세정보, 지도, 중개사 정보 및 실시간 채팅 문의 기능을 제공합니다."/>
+  <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=5970bdf6aec828dc6aa07626ba3794cf&libraries=services"></script>
+  
+  <style>
+    :root{
+      /* Light theme */
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#475569;
+      --line:#e2e8f0;
+      --accent:#2563eb;
+      --tagbg:#eef2ff;
+      --tagbd:#c7d2fe;
+      --radius:16px;
+      --shadow:0 10px 24px rgba(15,23,42,.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;padding:18px;background:var(--bg);color:var(--text);font-family:system-ui,Segoe UI,Apple SD Gothic Neo,Noto Sans KR,sans-serif}
+    a{color:inherit;text-decoration:none}
+    .shell{max-width:1150px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+    /* header */
+    .header{display:flex;gap:14px;align-items:flex-start;justify-content:space-between}
+    .title{font-size:24px;font-weight:900;margin:0}
+    .tags{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .tag{font-size:12px;background:var(--tagbg);color:#1e40af;border:1px solid var(--tagbd);border-radius:999px;padding:4px 8px}
+    .money{font-size:22px;font-weight:900}
+    .meta{display:flex;gap:8px;align-items:center;color:var(--muted)}
+    .btn{padding:9px 12px;border:1px solid #cbd5e1;background:#ffffff;color:#0f172a;border-radius:10px;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+    .btn:hover{background:#f8fafc}
+    .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+    .btn.pri:hover{filter:brightness(0.96)}
+    .btn.pri { background:#2563eb; border-color:#2563eb; color:#fff }
+
+    /* sections */
+    .grid{display:grid;grid-template-columns:1.6fr .95fr;gap:14px}
+    .section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px}
+    .section-title{display:flex;align-items:center;gap:8px;justify-content:space-between;color:#334155}
+
+    /* gallery */
+    .gallery{position:relative;display:flex;flex-direction:column;gap:8px}
+    .mainimg{width:100%;height:360px;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:#f1f5f9}
+    .thumbs{display:flex;gap:8px;overflow:auto;padding-bottom:2px}
+    .thumbs img{width:92px;height:68px;object-fit:cover;border-radius:8px;opacity:.95;border:2px solid transparent;cursor:pointer;background:#f8fafc}
+    .thumbs img.active{opacity:1;border-color:var(--accent)}
+    .gallery-nav{display:flex;gap:8px;justify-content:flex-end}
+
+    /* spec grid */
+    .spec-grid{
+      display:grid;
+      grid-template-columns: 200px 1fr;
+      gap:10px 24px;
+      align-items:center;
+      margin-top:8px;
+    }
+    .spec-key{
+      grid-column:1;
+      text-align:left;
+      color:#64748b;
+      white-space:nowrap;
+    }
+    .spec-val{
+      grid-column:2;
+      color:#0f172a;
+      font-weight:600;
+      word-break:break-word;
+      background:#f8fafc;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:8px 10px;
+    }
+    .spec-group{
+      grid-column:1 / -1;
+      margin-top:14px;
+      padding-top:10px;
+      border-top:1px dashed var(--line);
+      color:#334155;
+      font-weight:800;
+      letter-spacing:.2px;
+    }
+
+    /* map */
+    #map{height:260px;border-radius:12px;border:1px solid var(--line);background:#f1f5f9}
+
+    /* agent & chat */
+    .agent{display:flex;gap:12px;align-items:center}
+    .agent img{width:64px;height:64px;border-radius:50%;border:1px solid #e2e8f0;object-fit:cover;background:#f1f5f9}
+    .agent .nick{font-weight:800}
+    .agent .office{color:var(--muted)}
+
+    .chat{background:var(--card);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;height:380px}
+    .chat-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line)}
+    .chat-log{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px;background:#f8fafc}
+    .bubble{max-width:75%;padding:8px 10px;border-radius:12px;line-height:1.45;border:1px solid #e5e7eb}
+    .me{align-self:flex-end;background:#dbeafe;border-color:#bfdbfe}
+    .other{align-self:flex-start;background:#e2e8f0;border-color:#cbd5e1}
+    .chat-input{display:flex;gap:8px;border-top:1px solid var(--line);padding:8px}
+    .muted{color:#64748b}
+
+    /* 찜 버튼(별) */
+    .btn.fav { display:inline-flex; align-items:center; gap:6px; }
+    .btn.fav .star { color:#cbd5e1; font-size:16px; line-height:1; }
+    .btn.fav.active .star { color:#facc15; }        /* ★ 토글 시 노란색 */
+    .btn.fav.active { border-color:#facc15; background:#fffbe6; } /* 배경 살짝 노랑 */
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- 헤더 -->
+  <section class="header">
+    <div>
+      <h1 class="title" id="title">-</h1>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+      <div class="meta">
+        <button id="btnFav" class="btn fav">
+          <span class="star">☆</span>
+          <span class="label">찜하기</span>
+        </button>
+        <a class="btn" href="/tenant_favorites.html">관심목록</a>
+        <a class="btn" href="/tenant_main.html">메인으로</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid" style="margin-top:4px">
+    <!-- 좌: 갤러리/상세/지도 -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <!-- 갤러리 -->
+      <section class="section">
+        <div class="section-title"><h3 style="margin:0">이미지 갤러리</h3><span class="tag">Images</span></div>
+        <div class="gallery">
+          <img id="mainimg" class="mainimg" alt="메인 이미지" src="https://picsum.photos/seed/placeholder/1200/800">
+          <div class="thumbs" id="thumbs"></div>
+        </div>
+        <div class="gallery-nav">
+          <button class="btn" id="prev">◀ 이전</button>
+          <button class="btn" id="next">다음 ▶</button>
+        </div>
+      </section>
+
+      <!-- 상세정보 -->
+      <section class="section" id="detail-spec-section">
+        <div class="section-title">
+          <h3 style="margin:0">상세정보</h3><span class="tag">Specs</span>
+        </div>
+        <div id="detail-spec" class="spec-grid"></div>
+      </section>
+
+      <!-- 지도 -->
+      <section class="section">
+        <div class="section-title"><h3 style="margin:0">위치 / 주변</h3><span class="tag">지도</span></div>
+        <div id="map"></div>
+        <div id="mapNote" class="muted" style="margin-top:6px;display:none">좌표가 없어 지도를 표시하지 않습니다.</div>
+      </section>
+    </div>
+
+    <!-- 우: 중개사 카드 + 채팅 -->
+    <aside style="display:flex;flex-direction:column;gap:14px">
+      <div class="section">
+        <div class="section-title"><h3 style="margin:0">중개사 정보</h3><span class="tag">공인중개사</span></div>
+        <div class="agent" id="agentCard">
+          <img id="agentPhoto" src="https://i.pravatar.cc/80?img=12" alt="프로필">
+          <div style="flex:1">
+            <div class="nick" id="agentNick">-</div>
+            <div id="agentName" class="muted">-</div>
+            <div id="agentOffice" class="office">-</div>
+          </div>
+          <button id="btnContact2" class="btn pri">채팅하기</button>
+        </div>
+      </div>
+        </form>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  const toURL = (u)=> !u ? null :
+  (/^(https?:|data:|\/uploads\/)/i.test(u) ? u : '/uploads/' + u.replace(/^\/+/, ''));
+
+  // ------- helpers -------
+  const qs = (s,p=document)=>p.querySelector(s);
+  function money10kToKRW(n){
+    if(n==null || isNaN(n)) return null;
+    n = Number(n);
+    const eok = Math.floor(n / 10000);
+    const man = n % 10000;
+    if(eok>0 && man>0) return `${eok}억 ${man.toLocaleString()}만`;
+    if(eok>0)           return `${eok}억`;
+    return `${man.toLocaleString()}만`;
+  }
+  function yesNo(b){ return b ? '예' : '아니오'; }
+  function safe(v){ return (v===0 || v) ? String(v) : null; }
+  function joinNonEmpty(arr, sep=' '){ return arr.filter(Boolean).join(sep) || null; }
+  function fmtArea(m2){ return (m2==null ? null : `${Number(m2)} ㎡`); }
+  function fmtDateTime(ts){ try{ return new Date(ts).toLocaleString(); }catch{ return ts||null; } }
+
+  function priceLabel(l){
+    if(l.deal_type==='sale')   return l.price_sale_10k!=null ? `매매 ${money10kToKRW(l.price_sale_10k)}` : null;
+    if(l.deal_type==='jeonse') return l.deposit_10k!=null    ? `전세 ${money10kToKRW(l.deposit_10k)}`   : null;
+    if(l.deal_type==='monthly'){
+      const month10k = (l.rent_effective_monthly_10k ?? l.rent_10k ??
+                       (l.rent_annual_10k!=null ? Math.ceil(l.rent_annual_10k/12) : null));
+      const dep = l.deposit_10k!=null ? money10kToKRW(l.deposit_10k) : null;
+      const rent = month10k!=null ? money10kToKRW(month10k) : null;
+      if(dep && rent) return `월세 ${dep} / ${rent}`;
+      if(rent)        return `월세 ${rent}`;
+      if(dep)         return `보증금 ${dep}`;
+      return null;
+    }
+    if(l.deal_type==='presale_right')   return '분양권';
+    if(l.deal_type==='occupancy_right') return '입주권';
+    return null;
+  }
+
+  // ------- spec render -------
+  function renderDetailSpec(l){
+    const el = qs('#detail-spec'); if(!el) return;
+    const rows = [];
+    const group = (title)=> rows.push(`<div class="spec-group">${title}</div>`);
+    const add = (key,val)=>{ if(val==null || val==='') return;
+      rows.push(`<div class="spec-key">${key}</div><div class="spec-val">${val}</div>`);
+    };
+
+    // 기본
+    group('기본정보');
+    add('제목', safe(l.title));
+    add('유형', safe(l.property_type));
+    add('거래형태', safe(l.deal_type));
+    add('가격', priceLabel(l));
+    add('설명', safe(l.description));
+
+    // 주소
+    group('주소');
+    const addrLine1 = joinNonEmpty([l.si, l.gu, l.dong]);
+    const addrLine2 = joinNonEmpty([l.sigungu, l.road_name, l.lot_no]);
+    add('주소(행정동)', addrLine1);
+    add('주소(도로/지번)', addrLine2);
+    // 면적
+    group('면적');
+    add('전용면적(area_m2)', fmtArea(l.area_m2));
+    add('공급면적(gross_area_m2)', fmtArea(l.gross_area_m2));
+    add('토지지분(land_share_m2)', fmtArea(l.land_share_m2));
+    add('대지면적(land_area_m2)', fmtArea(l.land_area_m2));
+
+    // 건물/층
+    group('건물/층');
+    add('층', safe(l.floor));
+    add('준공년도', safe(l.built_year));
+    add('신축여부', l.is_new_build!=null ? yesNo(!!l.is_new_build) : null);
+
+    // 옵션/환경
+    group('옵션/환경');
+    add('주차', l.has_parking!=null ? yesNo(!!l.has_parking) : null);
+    add('반려동물', l.allow_pet!=null ? yesNo(!!l.allow_pet) : null);
+    add('풀옵션', l.is_full_option!=null ? yesNo(!!l.is_full_option) : null);
+    add('베란다', l.has_veranda!=null ? yesNo(!!l.has_veranda) : null);
+    add('정원', l.has_garden!=null ? yesNo(!!l.has_garden) : null);
+    add('관리비 포함', l.fee_included!=null ? yesNo(!!l.fee_included) : null);
+    add('방 개수', safe(l.rooms));
+    add('욕실 수', safe(l.bathrooms));
+
+    // 임대 세부
+    group('임대 세부');
+    add('매매가(10K)', safe(l.price_sale_10k));
+    add('보증금(10K)', safe(l.deposit_10k));
+    add('월세(10K)', safe(l.rent_10k));
+    add('납부주기', safe(l.rent_pay_cycle));
+    add('연간임대(10K)', safe(l.rent_annual_10k));
+    add('유효월세(10K)', safe(l.rent_effective_monthly_10k));
+
+    // 상태/메타
+    group('상태/메타');
+    add('상태', safe(l.status));
+    add('생성시각', fmtDateTime(l.created_at));
+
+    // 좌표/식별
+    group('좌표/식별');
+    add('위도(lat)', safe(l.lat));
+    add('경도(lng)', safe(l.lng));
+
+    el.innerHTML = rows.join('\n');
+  }
+
+  // ------- gallery -------
+  function normalizeURL(u){
+    if(!u) return null;
+    if(/^https?:\/\//i.test(u) || /^data:/i.test(u)) return u;
+    if(u.startsWith('/uploads/')) return u;
+    return '/uploads/' + u.replace(/^\/+/, '');
+  }
+  function setupGallery(images){
+    const main = qs('#mainimg');
+    const thumbs = qs('#thumbs');
+    let idx = 0;
+    let list = [];
+
+    if (images && images.length) {
+      list = images.map(x => normalizeURL(x.image_url || x)).filter(Boolean);
+    }
+    if (list.length === 0) {
+      list = [normalizeURL(main.getAttribute('src')) || 'https://picsum.photos/seed/placeholder/1200/800'];
+    }
+
+    function renderThumbs(){
+      thumbs.innerHTML = list.map((src,i)=>`<img data-i="${i}" src="${src}" class="${i===idx?'active':''}" alt="thumb">`).join('');
+    }
+    function setMain(i){
+      idx = (i + list.length) % list.length;
+      main.src = list[idx];
+      renderThumbs();
+    }
+    thumbs.addEventListener('click', (e)=>{
+      const t = e.target.closest('img[data-i]'); if(!t) return; setMain(Number(t.dataset.i));
+    });
+    qs('#prev').addEventListener('click', ()=> setMain(idx-1));
+    qs('#next').addEventListener('click', ()=> setMain(idx+1));
+    setMain(0);
+  }
+
+  // ------- map -------
+  function renderMap(lat,lng){
+    const el = qs('#map');
+    if(lat==null || lng==null){ qs('#mapNote').style.display=''; el.style.display='none'; return; }
+    if(window.kakao && kakao.maps){
+      const map = new kakao.maps.Map(el, { center: new kakao.maps.LatLng(lat, lng), level: 4 });
+      const marker = new kakao.maps.Marker({ position: new kakao.maps.LatLng(lat, lng) });
+      marker.setMap(map);
+    } else {
+      el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b">지도 SDK가 로드되지 않았습니다.</div>`;
+    }
+  }
+
+  // ------- chat -------
+  let ws = null; let myId = 'user'; // 로그인 연동 시 교체
+  function openChat(room){
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const url = `${proto}://${location.host}/ws/chat?room=${encodeURIComponent(room)}`;
+    try{ ws?.close(); }catch{}
+    ws = new WebSocket(url);
+    ws.onopen = ()=> appendMsg('system','채팅이 시작되었습니다.');
+    ws.onmessage = (ev)=>{
+      try{ const msg = JSON.parse(ev.data); appendMsg(msg.userId===myId?'me':'other', msg.text); }catch{}
+    };
+    ws.onclose = ()=> appendMsg('system','채팅이 종료되었습니다.');
+  }
+  function appendMsg(who, text){
+    const log = qs('#chatLog');
+    const div = document.createElement('div');
+    if(who==='system'){ div.className='muted'; div.textContent=text; }
+    else{ div.className = `bubble ${who==='me'?'me':'other'}`; div.textContent = text; }
+    log.appendChild(div); log.scrollTop = log.scrollHeight;
+  }
+  function bindChat(listing){
+    const chatBox = qs('#chatBox');
+    const openBtn = qs('#btnContact');
+    const openBtn2 = qs('#btnContact2');
+    const closeBtn = qs('#btnCloseChat');
+    const form = qs('#chatForm');
+    const input = qs('#chatMsg');
+    const room = `listing_${listing.listing_id}`;
+    function open(){ chatBox.style.display='flex'; if(!ws || ws.readyState>1) openChat(room); input.focus(); }
+    function close(){ chatBox.style.display='none'; try{ ws?.close(); }catch{} }
+    openBtn?.addEventListener('click', open);
+    openBtn2?.addEventListener('click', open);
+    closeBtn?.addEventListener('click', close);
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const text = input.value.trim(); if(!text) return;
+      const payload = { type:'chat', room, listing_id: listing.listing_id, text, ts: Date.now(), userId: myId };
+      try{ ws?.send(JSON.stringify(payload)); }catch{}
+      appendMsg('me', text); input.value='';
+    });
+  }
+
+  // ------- init -------
+  (async function init(){
+    const id = Number(new URLSearchParams(location.search).get('id'));
+    if(!id){ alert('잘못된 접근: id가 없습니다.'); return; }
+    const res = await fetch(`/api/listings/${id}?full=1`);
+    const j = await res.json();
+    if(!j.ok){ alert('상세를 불러오지 못했습니다.'); return; }
+
+    const l = j.listing || j;
+    const images = j.images || [];
+    const agent = j.agent || null;
+
+    // 상세 스펙
+    renderDetailSpec(l);
+
+    // 헤더/타이틀
+    const set = (sel,v)=>{ const e=qs(sel); if(e && v!=null) e.textContent=v; };
+    set('#title', l.title);
+
+    // 갤러리
+    setupGallery(images);
+
+    // 지도
+    renderMap(l.lat, l.lng);
+
+    // 중개사 카드
+    if(agent){
+      set('#agentNick', agent.nickname || agent.name || `Agent #${agent.agent_id}`);
+      set('#agentName', agent.name ? `담당자: ${agent.name}` : `중개사 ID: ${agent.agent_id}`);
+      set('#agentOffice', agent.office_name || '-');
+      set('#agentPhone', agent.phone_number || '-');
+      const img = toURL(agent.profile_image_url || agent.profile_url);
+      if(img) qs('#agentPhoto').src = img;
+    } else {
+      set('#agentNick', `Agent #${l.agent_id}`);
+      set('#agentName', `중개사 ID: ${l.agent_id}`);
+    }
+
+    // 채팅
+    bindChat(l);
+    
+    // 찜 토글(Optimistic UI)
+    const favBtn = document.getElementById('btnFav');
+    let favorite = !!j.isFavorite;
+
+    function setFavUI(){
+      favBtn.classList.toggle('active', favorite);
+      const star = favBtn.querySelector('.star');
+      const label = favBtn.querySelector('.label');
+      if (favorite) {
+        if (star) star.textContent = '★';
+        if (label) label.textContent = '찜됨';
+      } else {
+        if (star) star.textContent = '☆';
+        if (label) label.textContent = '찜하기';
+      }
+    }
+    setFavUI();
+
+    favBtn.addEventListener('click', async () => {
+      const prev = favorite;
+
+      // 1) 즉시 UI 반영
+      favorite = !favorite;
+      setFavUI();
+
+      try {
+        const method = prev ? 'DELETE' : 'POST';
+        const r = await fetch(`/api/listings/${l.listing_id}/favorite`, { method });
+        if (r.status === 401) {
+          alert('로그인이 필요합니다.');
+          location.href = '/login.html';
+          return;
+        }
+        const jj = await r.json();
+        if (!jj.ok) {
+          // 2) 실패 롤백
+          favorite = prev;
+          setFavUI();
+          alert(jj.error || '실패');
+        }
+      } catch {
+        // 2) 실패 롤백
+        favorite = prev;
+        setFavUI();
+        alert('네트워크 오류');
+      }
+    });
+
+  })();
+
+  let CURRENT_LISTING = null;
+
+  async function loadDetail() {
+    const id = new URLSearchParams(location.search).get('id');
+    if(!id) return alert('id 누락');
+
+    const res = await fetch(`/api/listings/${id}?full=1`);
+    const data = await res.json();
+    if (!data.ok) return alert('상세 불러오기 실패');
+
+    CURRENT_LISTING = data.listing; // agent_id, listing_id 등 확보
+    // ... 기존 렌더 코드 진행 ...
+  }
+
+  // 채팅 버튼
+  document.getElementById('btnContact2')?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    if (!CURRENT_LISTING) return;
+
+    const agentId = CURRENT_LISTING.agent_id;
+    const listingId = CURRENT_LISTING.listing_id;
+    const w = 1200, h = 800;
+    const left = (screen.width - w) / 2;
+    const top  = (screen.height - h) / 2;
+
+    window.open(
+      `chat.html?agent_id=${encodeURIComponent(agentId)}&listing_id=${encodeURIComponent(listingId)}`,
+      '채팅',
+      `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`
+    );
+  });
+
+  // 초기 로드
+  loadDetail();
+</script>
+</body>
+</html>
