@@ -94,9 +94,36 @@
       #panel{ width:100vw; height:50vh; border-right:0; border-bottom:1px solid var(--bd); }
       #mapWrap{ height:50vh; }
     }
+    /* ─── 상단 이동 바 ─── */
+    .topnav{position:sticky;top:0;z-index:10;
+      display:flex;align-items:center;gap:8px;
+      padding:8px 12px;border-bottom:1px solid #2b3752;
+      background:linear-gradient(180deg,var(--panel) 0%,var(--panel-2) 100%);
+    }
+    .topnav .brand{font-weight:800;letter-spacing:.2px;cursor:pointer}
+    .topnav nav{display:flex;flex-wrap:wrap;gap:6px}
+    .topnav a{display:inline-flex;align-items:center;height:34px;padding:0 12px;
+      border-radius:999px;border:1px solid var(--bd);
+      background:#111827;color:var(--text);text-decoration:none;font-size:13px;white-space:nowrap;
+    }
+    .topnav a:hover{border-color:#3b4966}
+    .topnav a.active{background:var(--chip-on);border-color:#3b4966;
+      box-shadow:0 0 0 2px rgba(46,115,255,.15) inset}
+
   </style>
 </head>
 <body>
+  <header class="topnav" role="navigation" aria-label="상단 이동 메뉴">
+  <div class="brand" onclick="location.href='tenant_main.html'">🏠 홈스팟</div>
+  <nav>
+    <a href="search_apartment.html"   data-match="search_apartment.html">아파트</a>
+    <a href="search_officetel.html"   data-match="search_officetel.html">오피스텔</a>
+    <a href="search_rowhouse.html"    data-match="search_rowhouse.html">연립·다세대</a>
+    <a href="search_detached.html"    data-match="search_detached.html">단독주택</a>
+    <a href="all_listings.html"       data-match="all_listings.html">전체</a>
+  </nav>
+</header>
+
 <div id="app">
   <!-- 좌측 패널 -->
   <aside id="panel">
@@ -420,6 +447,13 @@
     bindFilterChips();
     loadPage(1,{force:true});
   });
+  (function(){
+  var file = location.pathname.split('/').pop();
+  document.querySelectorAll('.topnav a').forEach(function(a){
+    var m = a.getAttribute('data-match') || a.getAttribute('href');
+    if(m === file) a.classList.add('active');
+  });
+})();
 </script>
 </body>
 </html>

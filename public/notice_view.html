@@ -6,45 +6,189 @@
 <title>공지사항</title>
 <style>
   body{margin:0;font:15px/1.6 ui-sans-serif,system-ui,'Noto Sans KR',sans-serif;color:#0f172a;background:#fff}
-  .wrap{max-width:900px;margin:0 auto;padding:20px 22px}
+  .wrap{max-width:980px;margin:0 auto;padding:20px 22px}
   h1{margin:0 0 8px;font-size:22px}
   .muted{color:#6b7280}
   .panel{border:1px solid #e6e8ee;border-radius:12px;padding:16px 18px;background:#fff}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  input[type="text"], textarea{
+    width:100%; padding:10px 12px; border:1px solid #e6e8ee; border-radius:10px; outline:none;
+  }
+  textarea{min-height:180px; resize:vertical}
+  .btn{padding:10px 14px;border:1px solid #e6e8ee;border-radius:10px;background:#0f172a;color:#fff;cursor:pointer}
+  .btn.sub{background:#fff;color:#0f172a}
+  .list{margin:10px 0 0 18px;padding:0}
+  .list li{margin:8px 0}
   pre{white-space:pre-wrap;word-break:break-word;font:inherit}
+  .grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+  @media (max-width:900px){ .grid{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1 id="title">공지사항</h1>
-  <div class="muted" id="meta"></div>
-  <div class="panel" style="margin-top:12px">
-    <pre id="content">불러오는 중…</pre>
+  <h1>공지사항</h1>
+  <div class="grid" style="margin-top:12px">
+    <!-- 좌측: 보기/작성 -->
+    <section class="panel">
+
+      <!-- 보기 영역 -->
+      <div id="view-box" style="display:none">
+        <h2 id="v-title" style="margin:0 0 6px"></h2>
+        <div class="muted" id="v-dates"></div>
+        <div class="panel" style="margin-top:12px">
+          <pre id="v-content">불러오는 중…</pre>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn sub" onclick="openCompose()">새 공지 작성</button>
+          <button class="btn sub" onclick="goList()">목록으로</button>
+        </div>
+      </div>
+
+      <!-- 작성 폼(관리자 전용) -->
+      <div id="compose-box" style="display:none">
+        <h2 style="margin:0 0 6px">새 공지 작성</h2>
+        <div class="muted">관리자만 작성할 수 있습니다.</div>
+        <div class="row" style="margin-top:10px">
+          <input id="f-title" type="text" placeholder="제목을 입력하세요">
+        </div>
+        <div class="row" style="margin-top:8px">
+          <textarea id="f-content" placeholder="내용을 입력하세요"></textarea>
+        </div>
+        <div class="row" style="margin-top:8px;justify-content:flex-end">
+          <button class="btn sub" onclick="goList()">취소</button>
+          <button class="btn" onclick="submitNotice()">등록</button>
+        </div>
+      </div>
+
+      <!-- 기본은 목록만 보이게 -->
+      <div id="welcome" class="muted">오른쪽에서 공지를 선택하거나, 관리자라면 “새 공지 작성”을 누르세요.</div>
+    </section>
+
+    <!-- 우측: 목록 -->
+    <aside class="panel">
+      <div class="row" style="justify-content:space-between">
+        <b>공지 목록</b>
+        <button class="btn sub" id="btn-new" style="display:none" onclick="openCompose()">작성</button>
+      </div>
+      <ul class="list" id="notice-list">
+        <li class="muted">불러오는 중…</li>
+      </ul>
+    </aside>
   </div>
 </div>
 
 <script>
-(function(){
-  const qs = new URLSearchParams(location.search);
-  const id = qs.get('id');
-  async function load(){
-    try{
-      const r = await fetch(`/api/notices/${encodeURIComponent(id)}`, { credentials:'same-origin' });
-      const j = await r.json();
-      if (!r.ok || !j.ok) throw new Error('load failed');
-      const n = j.notice;
-      document.getElementById('title').textContent = n.title;
-      document.getElementById('meta').textContent =
-        `게시일 ${new Date(n.created_at).toLocaleString('ko-KR')}` +
-        (n.updated_at ? ` · 수정 ${new Date(n.updated_at).toLocaleString('ko-KR')}` : '');
-      // XSS 방지: textContent/innerText 계열 사용 (pre에 그대로 뿌림)
-      document.getElementById('content').textContent = n.content || '';
-    }catch(e){
-      document.getElementById('content').textContent = '공지사항을 불러오지 못했습니다.';
-      console.error(e);
-    }
+let isAdmin = false;
+
+// 권한 확인
+async function checkMe(){
+  try{
+    const r = await fetch('/api/me', { credentials:'same-origin' });
+    const j = await r.json();
+    isAdmin = j?.role === 'admin';
+    if(isAdmin) document.getElementById('btn-new').style.display = 'inline-block';
+  }catch{}
+}
+
+// 목록
+async function loadList(){
+  const ul = document.getElementById('notice-list');
+  ul.innerHTML = '<li class="muted">불러오는 중…</li>';
+  try{
+    const r = await fetch('/api/notices?limit=50', { credentials:'same-origin' });
+    const j = await r.json();
+    if(!r.ok || !j.ok){ throw new Error(); }
+    if(!j.items?.length){ ul.innerHTML = '<li class="muted">등록된 공지가 없습니다.</li>'; return; }
+    ul.innerHTML = '';
+    j.items.forEach(n=>{
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = `notice_view.html?id=${encodeURIComponent(n.notice_id)}`;
+      a.textContent = n.title;
+      a.onclick = (e)=>{ e.preventDefault(); loadOne(n.notice_id); history.replaceState({},'',a.href); };
+      const small = document.createElement('small');
+      small.className = 'muted';
+      small.style.marginLeft = '8px';
+      small.textContent = new Date(n.created_at).toLocaleDateString('ko-KR');
+      li.appendChild(a); li.appendChild(small); ul.appendChild(li);
+    });
+
+    // URL에 id가 있으면 바로 열기
+    const qs = new URLSearchParams(location.search);
+    const id = qs.get('id');
+    if (id) loadOne(id);
+  }catch(e){
+    ul.innerHTML = '<li class="muted">목록을 불러오지 못했습니다.</li>';
   }
-  load();
-})();
+}
+
+function goList(){
+  document.getElementById('view-box').style.display = 'none';
+  document.getElementById('compose-box').style.display = 'none';
+  document.getElementById('welcome').style.display = 'block';
+  // URL에서 id 제거
+  const url = new URL(location.href); url.searchParams.delete('id'); history.replaceState({},'',url.toString());
+}
+
+// 보기
+async function loadOne(id){
+  try{
+    const r = await fetch(`/api/notices/${encodeURIComponent(id)}`, { credentials:'same-origin' });
+    const j = await r.json();
+    if(!r.ok || !j.ok) throw new Error();
+    const n = j.notice;
+
+    document.getElementById('v-title').textContent = n.title;
+    document.getElementById('v-dates').textContent =
+      `게시일 ${new Date(n.created_at).toLocaleString('ko-KR')}` +
+      (n.updated_at ? ` · 수정 ${new Date(n.updated_at).toLocaleString('ko-KR')}` : '');
+    document.getElementById('v-content').textContent = n.content || '';
+
+    document.getElementById('welcome').style.display = 'none';
+    document.getElementById('compose-box').style.display = 'none';
+    document.getElementById('view-box').style.display = 'block';
+  }catch(e){
+    alert('공지 불러오기 실패');
+    goList();
+  }
+}
+
+// 작성(관리자)
+function openCompose(){
+  if(!isAdmin){ alert('관리자만 작성할 수 있습니다'); return; }
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('view-box').style.display = 'none';
+  document.getElementById('compose-box').style.display = 'block';
+  document.getElementById('f-title').value = '';
+  document.getElementById('f-content').value = '';
+}
+
+async function submitNotice(){
+  if(!isAdmin){ alert('관리자만 작성할 수 있습니다'); return; }
+  const title = document.getElementById('f-title').value.trim();
+  const content = document.getElementById('f-content').value;
+  if(!title || !content.trim()){ alert('제목/내용을 입력하세요'); return; }
+
+  const r = await fetch('/api/notices', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    credentials:'same-origin',
+    body: JSON.stringify({ title, content })
+  });
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok || !j.ok){ alert('등록 실패'); return; }
+
+  alert('등록되었습니다');
+  // 새로고침 없이 목록 갱신
+  await loadList();
+  // 방금 작성한 공지 열기
+  loadOne(j.id);
+}
+
+document.addEventListener('DOMContentLoaded', async ()=>{
+  await checkMe();
+  await loadList();
+});
 </script>
 </body>
 </html>

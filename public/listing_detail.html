@@ -89,19 +89,14 @@
     /* map */
     #map{height:260px;border-radius:12px;border:1px solid var(--line);background:#f1f5f9}
 
-    /* agent & chat */
+    /* agent  */
     .agent{display:flex;gap:12px;align-items:center}
     .agent img{width:64px;height:64px;border-radius:50%;border:1px solid #e2e8f0;object-fit:cover;background:#f1f5f9}
     .agent .nick{font-weight:800}
     .agent .office{color:var(--muted)}
-
-    .chat{background:var(--card);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;height:380px}
-    .chat-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line)}
-    .chat-log{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px;background:#f8fafc}
     .bubble{max-width:75%;padding:8px 10px;border-radius:12px;line-height:1.45;border:1px solid #e5e7eb}
     .me{align-self:flex-end;background:#dbeafe;border-color:#bfdbfe}
     .other{align-self:flex-start;background:#e2e8f0;border-color:#cbd5e1}
-    .chat-input{display:flex;gap:8px;border-top:1px solid var(--line);padding:8px}
     .muted{color:#64748b}
 
     /* 찜 버튼(별) */
@@ -340,47 +335,6 @@
     }
   }
 
-  // ------- chat -------
-  let ws = null; let myId = 'user'; // 로그인 연동 시 교체
-  function openChat(room){
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const url = `${proto}://${location.host}/ws/chat?room=${encodeURIComponent(room)}`;
-    try{ ws?.close(); }catch{}
-    ws = new WebSocket(url);
-    ws.onopen = ()=> appendMsg('system','채팅이 시작되었습니다.');
-    ws.onmessage = (ev)=>{
-      try{ const msg = JSON.parse(ev.data); appendMsg(msg.userId===myId?'me':'other', msg.text); }catch{}
-    };
-    ws.onclose = ()=> appendMsg('system','채팅이 종료되었습니다.');
-  }
-  function appendMsg(who, text){
-    const log = qs('#chatLog');
-    const div = document.createElement('div');
-    if(who==='system'){ div.className='muted'; div.textContent=text; }
-    else{ div.className = `bubble ${who==='me'?'me':'other'}`; div.textContent = text; }
-    log.appendChild(div); log.scrollTop = log.scrollHeight;
-  }
-  function bindChat(listing){
-    const chatBox = qs('#chatBox');
-    const openBtn = qs('#btnContact');
-    const openBtn2 = qs('#btnContact2');
-    const closeBtn = qs('#btnCloseChat');
-    const form = qs('#chatForm');
-    const input = qs('#chatMsg');
-    const room = `listing_${listing.listing_id}`;
-    function open(){ chatBox.style.display='flex'; if(!ws || ws.readyState>1) openChat(room); input.focus(); }
-    function close(){ chatBox.style.display='none'; try{ ws?.close(); }catch{} }
-    openBtn?.addEventListener('click', open);
-    openBtn2?.addEventListener('click', open);
-    closeBtn?.addEventListener('click', close);
-    form.addEventListener('submit', (e)=>{
-      e.preventDefault();
-      const text = input.value.trim(); if(!text) return;
-      const payload = { type:'chat', room, listing_id: listing.listing_id, text, ts: Date.now(), userId: myId };
-      try{ ws?.send(JSON.stringify(payload)); }catch{}
-      appendMsg('me', text); input.value='';
-    });
-  }
 
   // ------- init -------
   (async function init(){
@@ -420,9 +374,7 @@
       set('#agentName', `중개사 ID: ${l.agent_id}`);
     }
 
-    // 채팅
-    bindChat(l);
-    
+  
     // 찜 토글(Optimistic UI)
     const favBtn = document.getElementById('btnFav');
     let favorite = !!j.isFavorite;
@@ -497,12 +449,6 @@
     const w = 1200, h = 800;
     const left = (screen.width - w) / 2;
     const top  = (screen.height - h) / 2;
-
-    window.open(
-      `chat.html?agent_id=${encodeURIComponent(agentId)}&listing_id=${encodeURIComponent(listingId)}`,
-      '채팅',
-      `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`
-    );
   });
 
   // 초기 로드

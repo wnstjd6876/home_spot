@@ -149,13 +149,15 @@
       </ul>
     </div>
     <div class="card">
-      <div class="section-title"><h3 style="margin:0">공지/가이드</h3><a href="#" class="pill">문서</a></div>
+      <div class="section-title">
+        <h3 style="margin:0">가이드</h3>
+        <a href="/api/guide" class="pill" title="홈스팟_가이드.hwp 내려받기">문서</a>
+      </div>
       <div class="muted" style="margin-top:10px">
         사진 규격, 주소 작성법, 허위매물 방지 정책 등 운영 가이드를 확인하세요.
       </div>
     </div>
   </section>
-  <!-- (알림 카드 아래나, 파일 하단 공용 스크립트 블럭에 추가) -->
 <script>
   // 공지 팝업 열기
   function openNoticePopup(e, id){
@@ -389,6 +391,44 @@
       document.querySelectorAll('.btn.logout').forEach(b=>b.style.display='inline-block');
     }catch(e){ console.error(e); }
   })();
+
+  // 최근 문의(가장 최근 채팅방 이름 표시)
+  async function loadRecentInbox(){
+    const box = document.getElementById('inbox');
+    if (!box) return;
+    box.textContent = '불러오는 중…';
+
+    try{
+      const r = await fetch('/api/agents/me/recent-chat', { credentials:'same-origin' });
+      const j = await r.json();
+
+      if (!r.ok || !j.ok) throw new Error('load failed');
+
+      if (!j.room){
+        box.innerHTML = `
+          <div class="muted">아직 최근 문의가 없습니다.</div>
+          <div style="margin-top:8px">
+            <button class="btn" onclick="openPopup(event, 'chat.html', '문의함')">문의함 열기</button>
+          </div>`;
+        return;
+      }
+
+      const name = j.room.user_name || '(이름 없음)';
+      const when = new Date(j.room.created_at).toLocaleString('ko-KR');
+
+      box.innerHTML = `
+        <div style="font-weight:800">${name}</div>
+        <div class="muted" style="margin-top:4px">최근 생성: ${when}</div>
+        <div style="margin-top:8px">
+          <button class="btn" onclick="openPopup(event, 'chat.html?room_id=${encodeURIComponent(j.room.room_id)}', '문의함')">열기</button>
+        </div>`;
+    }catch(e){
+      console.error(e);
+      box.textContent = '최근 문의를 불러오지 못했습니다.';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadRecentInbox);
   </script>
 </main>
 </body>

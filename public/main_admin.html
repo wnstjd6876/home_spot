@@ -57,37 +57,31 @@
         <p class="title">중개사 승인 관리</p>
         <div class="desc">가입 요청 승인/반려, 자격증 미리보기</div>
       </div>
-      <button class="btn" onclick="openPopup(event,'Admin.html','중개사 승인 관리')">열기</button>
+      <button class="btn" onclick="openPopup('Admin.html','중개사 승인 관리')">열기</button>
     </div>
 
     <!-- 공지사항 보기 -->
-    <div class="action notice">
+    <div class = "action notice">
       <div>
-        <p class="title">공지사항 보기</p>
-        <div class="desc">공지 ID를 입력하거나 바로 열기</div>
+        <p class="title">공지사항</p>
+        <div class="desc">공지사항 목록 확인 및 작성</div>
       </div>
-      <div class="row" style="gap:8px">
-        <input id="noticeId" class="btn" placeholder="공지 ID" style="min-width:120px;background:#fff"/>
-        <button class="btn" onclick="openNotice()">보기</button>
-      </div>
+      <button class="btn" onclick="openNotice()">열기</button>
     </div>
   </section>
 
   <section class="card" style="margin-top:16px">
-    <div class="muted">Tip: 공지 등록/수정 화면은 추후 별도 페이지로 분리 가능. 현재는 공지 단건 보기(`notice_view.html?id=...`)만 연결.</div>
   </section>
 </main>
 
 <script>
-function openPopup(e, url, title){
-  if(e) e.preventDefault();
+function openPopup(url, title){
   const w=1200,h=800,left=(screen.width-w)/2,top=(screen.height-h)/2;
   window.open(url,title,`width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`);
 }
 function openNotice(){
-  const id = (document.getElementById('noticeId').value||'').trim();
-  if(!id){ alert('공지 ID를 입력하세요'); return; }
-  openPopup(null, `notice_view.html?id=${encodeURIComponent(id)}`, '공지사항');
+  // 목록/작성/보기 모두 notice_view.html에서 처리
+  openPopup('notice_view.html', '공지사항');
 }
 </script>
 </body>

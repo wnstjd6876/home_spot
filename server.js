@@ -17,6 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
 
+
 function sha256Hex(s) {
   return crypto.createHash('sha256').update(s).digest('hex');
 }
@@ -503,32 +504,60 @@ app.get('/profile', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'profile_setting.html'));
 });
 
-//현재 유저 조회 api
+// 현재 유저 조회 api (admin/agent/tenant 공통) — 이 한 개만 남겨
 app.get('/api/me', async (req, res) => {
   try {
-    if (!req.session.user) return res.status(401).json({ ok:false, message:'unauthorized' });
-    const u = req.session.user;
-
-    if (u.role === 'agent') {
-      const [rows] = await pool.query(
-        "SELECT agent_id AS id, agent_name AS username, email, nickname, profile_url FROM agents WHERE agent_id=? LIMIT 1",
-        [u.id]
-      );
-      if (!rows.length) return res.status(404).json({ ok:false });
-      return res.json({ ok:true, role:'agent', ...rows[0] });
-    } else {
-      const [rows] = await pool.query(
-        "SELECT user_id AS id, user_name AS username, email, nickname, profile_url FROM users WHERE user_id=? LIMIT 1",
-        [u.id]
-      );
-      if (!rows.length) return res.status(404).json({ ok:false });
-      return res.json({ ok:true, role:'tenant', ...rows[0] });
+    const u = req.session?.user;
+    if (!u) {
+      // 로그인 안 함
+      return res.json({ ok:false });
     }
+
+    // 1) 관리자
+    if (u.role === 'admin') {
+      return res.json({
+        ok: true,
+        id: u.id,
+        role: 'admin',
+        nickname: null,
+        profile_url: null
+      });
+    }
+
+    // 2) 중개사
+    if (u.role === 'agent') {
+      const [[row]] = await pool.query(
+        "SELECT nickname, profile_url FROM agents WHERE agent_id=? LIMIT 1",
+        [u.id]
+      );
+      return res.json({
+        ok: true,
+        id: u.id,
+        role: 'agent',
+        nickname: row?.nickname ?? null,
+        profile_url: row?.profile_url ?? null
+      });
+    }
+
+    // 3) 일반 사용자(세입자)
+    const [[row]] = await pool.query(
+      "SELECT nickname, profile_url FROM users WHERE user_id=? LIMIT 1",
+      [u.id]
+    );
+    return res.json({
+      ok: true,
+      id: u.id,
+      role: 'tenant',
+      nickname: row?.nickname ?? null,
+      profile_url: row?.profile_url ?? null
+    });
   } catch (e) {
-    console.error(e);
+    console.error('GET /api/me', e);
     res.status(500).json({ ok:false });
   }
 });
+
+
 
 //닉네임 저장 api
 app.post('/api/profile/nickname', async (req, res) => {
@@ -1289,7 +1318,7 @@ app.get('/api/search/listings', async (req, res) => {
 });
 
 // 상세 조회(+이미지/중개사/즐겨찾기/소유자 플래그)
-app.get('/api/listings/:id', async (req, res) => {
+app.get('/api/listings/:id(\\d+)', async (req, res) => {
   const id = Number(req.params.id);
   const full = req.query.full === '1';
   if (!Number.isFinite(id)) {
@@ -1349,7 +1378,7 @@ app.get('/api/listings/:id', async (req, res) => {
 
     // 5) 즐겨찾기 여부(테이블이 없다면 try/catch로 안전 처리)
     let isFavorite = false;
-    if (user && user.id) {
+    if (user && user.role === 'tenant') {
       const [[fav]] = await pool.query(
         `SELECT 1 FROM favorites WHERE listing_id=? AND user_id=? LIMIT 1`,
         [id, user.id]
@@ -1364,37 +1393,32 @@ app.get('/api/listings/:id', async (req, res) => {
   }
 });
 
-// 찜 추가 (토글의 추가쪽)
+// 찜 추가
 app.post('/api/listings/:id/favorite', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ ok:false, error:'unauthorized' });
+  if (!req.session.user || req.session.user.role !== 'tenant') {
+    return res.status(401).json({ ok:false, error:'unauthorized' });
+  }
   const userId = req.session.user.id;
   const listingId = Number(req.params.id);
   if (!Number.isFinite(listingId)) return res.status(400).json({ ok:false, error:'bad_id' });
 
   try {
-    // 중복 방지: UNIQUE(user_id, listing_id). INSERT IGNORE 사용
     await pool.query(
       `INSERT IGNORE INTO favorites (user_id, listing_id) VALUES (?, ?)`,
       [userId, listingId]
     );
-
-    // 로그(옵션)
-    await pool.query(
-      `INSERT INTO user_logs (user_id, listing_id, action_type, action_value)
-       VALUES (?, ?, 'favorite', JSON_OBJECT('action','add'))`,
-      [userId, listingId]
-    );
-
     return res.json({ ok:true });
   } catch (e) {
-    console.error(e);
+    console.error('favorite add error:', e);
     return res.status(500).json({ ok:false, error:'server_error' });
   }
 });
 
-// 찜 제거 (토글의 제거쪽)
+// 찜 제거
 app.delete('/api/listings/:id/favorite', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ ok:false, error:'unauthorized' });
+  if (!req.session.user || req.session.user.role !== 'tenant') {
+    return res.status(401).json({ ok:false, error:'unauthorized' });
+  }
   const userId = req.session.user.id;
   const listingId = Number(req.params.id);
   if (!Number.isFinite(listingId)) return res.status(400).json({ ok:false, error:'bad_id' });
@@ -1404,17 +1428,9 @@ app.delete('/api/listings/:id/favorite', async (req, res) => {
       `DELETE FROM favorites WHERE user_id=? AND listing_id=?`,
       [userId, listingId]
     );
-
-    // 로그(옵션)
-    await pool.query(
-      `INSERT INTO user_logs (user_id, listing_id, action_type, action_value)
-       VALUES (?, ?, 'favorite', JSON_OBJECT('action','remove'))`,
-      [userId, listingId]
-    );
-
     return res.json({ ok:true, removed: r.affectedRows });
   } catch (e) {
-    console.error(e);
+    console.error('favorite remove error:', e);
     return res.status(500).json({ ok:false, error:'server_error' });
   }
 });
@@ -1447,6 +1463,175 @@ app.get('/api/favorites', async (req, res) => {
     res.status(500).json({ ok:false, error:'server_error' });
   }
 });
+
+// 추천: 내 즐겨찾기 주변 1km 매물 (기준 매물 정보 포함)
+app.get('/api/recommendations/near-favorites', async (req, res) => {
+  try {
+    if (!req.session.user || req.session.user.role !== 'tenant') {
+      return res.status(401).json({ ok:false, error:'unauthorized' });
+    }
+    const userId = req.session.user.id;
+    const basisId = Number(req.query.basis); // 선택한 기준 listing_id (없으면 전체)
+
+    if (basisId) {
+    const [rows] = await pool.query(
+      `
+      SELECT
+        l.listing_id, l.title, l.deal_type,
+        l.price_sale_10k, l.deposit_10k, l.rent_10k, l.rent_annual_10k, l.rent_effective_monthly_10k,
+
+        l.price_key_10k,
+        ROUND(COALESCE(l.gross_area_m2, l.area_m2, l.land_area_m2),1) AS area_m2,
+        l.sigungu, l.road_name, l.lot_no,
+        ST_Latitude(l.coord)  AS lat,
+        ST_Longitude(l.coord) AS lng,
+        ST_Distance_Sphere(l.coord, fl.coord) AS basis_dist_m,
+        (SELECT li.image_url FROM listing_images li
+          WHERE li.listing_id=l.listing_id ORDER BY li.image_id LIMIT 1) AS cover_image_url,
+        fl.listing_id AS basis_listing_id,
+        fl.title      AS basis_title,
+        (SELECT li2.image_url FROM listing_images li2
+          WHERE li2.listing_id=fl.listing_id ORDER BY li2.image_id LIMIT 1) AS basis_cover_image_url
+      FROM listings l
+      JOIN listings fl ON fl.listing_id=?  -- 기준 매물
+      WHERE l.status='active' AND l.coord IS NOT NULL
+        AND l.listing_id <> fl.listing_id
+        AND ST_Distance_Sphere(l.coord, fl.coord) <= 1000
+        AND NOT EXISTS (
+          SELECT 1 FROM favorites f2
+          WHERE f2.user_id=? AND f2.listing_id=l.listing_id
+        )
+      ORDER BY basis_dist_m ASC, l.created_at DESC
+      LIMIT 24
+      `,
+      [basisId, userId]
+    );
+    return res.json({ ok:true, items: rows, basis: 'single', basisId });
+  }
+
+    // basisId가 없는 "전체" 기준
+    const uid = req.session.user.id;
+    const [rows] = await pool.query(
+      `
+      SELECT *
+      FROM (
+        SELECT
+          l.listing_id, l.title, l.deal_type, l.property_type, l.addr_key,
+          l.price_sale_10k, l.deposit_10k, l.rent_10k, l.rent_annual_10k, l.rent_effective_monthly_10k,
+          l.price_key_10k,
+          ROUND(COALESCE(l.gross_area_m2, l.area_m2, l.land_area_m2),1) AS area_m2,
+          l.sigungu, l.road_name, l.lot_no,
+          ST_Latitude(l.coord)  AS lat,
+          ST_Longitude(l.coord) AS lng,
+          l.created_at,
+
+          /* 내 즐겨찾기 중 l과 가장 가까운 기준 */
+          ( SELECT fl2.listing_id
+              FROM favorites f2 JOIN listings fl2 ON fl2.listing_id=f2.listing_id
+            WHERE f2.user_id=? AND fl2.coord IS NOT NULL
+            ORDER BY ST_Distance_Sphere(l.coord, fl2.coord) ASC
+            LIMIT 1 ) AS basis_listing_id,
+
+          ( SELECT fl2.title
+              FROM favorites f2 JOIN listings fl2 ON fl2.listing_id=f2.listing_id
+            WHERE f2.user_id=? AND fl2.coord IS NOT NULL
+            ORDER BY ST_Distance_Sphere(l.coord, fl2.coord) ASC
+            LIMIT 1 ) AS basis_title,
+
+          ( SELECT ST_Distance_Sphere(l.coord, fl2.coord)
+              FROM favorites f2 JOIN listings fl2 ON fl2.listing_id=f2.listing_id
+            WHERE f2.user_id=? AND fl2.coord IS NOT NULL
+            ORDER BY ST_Distance_Sphere(l.coord, fl2.coord) ASC
+            LIMIT 1 ) AS basis_dist_m,
+
+          /* 대표 이미지들 */
+          (SELECT image_url FROM listing_images WHERE listing_id=l.listing_id ORDER BY image_id LIMIT 1) AS cover_image_url,
+          (SELECT image_url FROM listing_images WHERE listing_id=
+              ( SELECT fl2.listing_id
+                  FROM favorites f2 JOIN listings fl2 ON fl2.listing_id=f2.listing_id
+                WHERE f2.user_id=? AND fl2.coord IS NOT NULL
+                ORDER BY ST_Distance_Sphere(l.coord, fl2.coord) ASC
+                LIMIT 1 )
+            ORDER BY image_id LIMIT 1) AS basis_cover_image_url,
+
+          /* 중복 제거/상한 랭크(윈도 함수) */
+          ROW_NUMBER() OVER (
+            PARTITION BY
+              /* 기준별 + 같은 건물/유형/거래유형 */
+              ( SELECT fl2.listing_id FROM favorites f2 JOIN listings fl2 ON fl2.listing_id=f2.listing_id
+                WHERE f2.user_id=? AND fl2.coord IS NOT NULL
+                ORDER BY ST_Distance_Sphere(l.coord, fl2.coord) ASC LIMIT 1 ),
+              l.addr_key, l.property_type, l.deal_type
+            ORDER BY
+              /* 기준에 더 가까운 순, 최신순 */
+              ( SELECT ST_Distance_Sphere(l.coord, fl2.coord)
+                  FROM favorites f2 JOIN listings fl2 ON fl2.listing_id=f2.listing_id
+                WHERE f2.user_id=? AND fl2.coord IS NOT NULL
+                ORDER BY ST_Distance_Sphere(l.coord, fl2.coord) ASC LIMIT 1 ) ASC,
+              l.created_at DESC, l.listing_id DESC
+          ) AS dup_rank,
+
+          ROW_NUMBER() OVER (
+            PARTITION BY
+              ( SELECT fl2.listing_id FROM favorites f2 JOIN listings fl2 ON fl2.listing_id=f2.listing_id
+                WHERE f2.user_id=? AND fl2.coord IS NOT NULL
+                ORDER BY ST_Distance_Sphere(l.coord, fl2.coord) ASC LIMIT 1 )
+            ORDER BY
+              ( SELECT ST_Distance_Sphere(l.coord, fl2.coord)
+                  FROM favorites f2 JOIN listings fl2 ON fl2.listing_id=f2.listing_id
+                WHERE f2.user_id=? AND fl2.coord IS NOT NULL
+                ORDER BY ST_Distance_Sphere(l.coord, fl2.coord) ASC LIMIT 1 ) ASC,
+              l.created_at DESC, l.listing_id DESC
+          ) AS per_basis_rank
+        FROM listings l
+        WHERE l.status='active'
+          AND l.coord IS NOT NULL
+          /* 내 즐겨찾기 중 1km 이내인 후보만 */
+          AND EXISTS (
+            SELECT 1
+              FROM favorites f JOIN listings fl ON fl.listing_id=f.listing_id
+            WHERE f.user_id=? AND fl.coord IS NOT NULL
+              AND ST_Distance_Sphere(l.coord, fl.coord) <= 1000
+          )
+          /* 내가 이미 찜한 매물은 제외 */
+          AND NOT EXISTS (
+            SELECT 1 FROM favorites f3
+            WHERE f3.user_id=? AND f3.listing_id=l.listing_id
+          )
+      ) ranked
+      WHERE dup_rank=1      /* 같은 건물/유형/거래유형 중복 제거 */
+        AND per_basis_rank<=6 /* 기준별 상한 */
+      ORDER BY basis_dist_m ASC, created_at DESC
+      LIMIT 24
+      `,
+      [uid, uid, uid, uid, uid, uid, uid, uid, uid, uid] // 자리수 맞춰서 동일 uid 바인딩
+    );
+
+
+    return res.json({ ok:true, items: rows, basis: 'near_favorites' });
+  } catch (e) {
+    console.error('recommendations error:', e);
+    return res.status(500).json({ ok:false, error:'server_error' });
+  }
+});
+
+// 내 즐겨찾기 타이틀 목록 (버튼 라벨용)
+app.get('/api/favorites/titles', async (req, res) => {
+  if (!req.session.user || req.session.user.role !== 'tenant') {
+    return res.status(401).json({ ok:false, error:'unauthorized' });
+  }
+  const userId = req.session.user.id;
+  const [rows] = await pool.query(
+    `SELECT f.listing_id, l.title
+       FROM favorites f
+       JOIN listings l ON l.listing_id = f.listing_id
+      WHERE f.user_id=?
+      ORDER BY f.created_at DESC`,
+    [userId]
+  );
+  res.json({ ok:true, items: rows });
+});
+
 
 /* -------------------- CHAT API -------------------- */
 
@@ -1738,51 +1923,28 @@ app.get('/api/chat/room-partner', async (req, res) => {
   }catch(e){ console.error(e); res.status(500).json({ok:false}); }
 });
 
-app.get('/api/me', async (req, res) => {
-  try {
-    const u = req.session?.user; // { id, role: 'tenant'|'agent', ... }
-    if (!u) return res.json({ ok: false });
 
-    // 선택: 닉네임/프로필도 곁들여주기
-    if (u.role === 'tenant') {
-      const [[row]] = await pool.query(
-        'SELECT user_id, nickname, profile_url FROM users WHERE user_id=? LIMIT 1',
-        [u.id]
-      );
-      return res.json({ ok: true, id: u.id, role: u.role, nickname: row?.nickname || null, profile_url: row?.profile_url || null });
-    } else if (u.role === 'agent') {
-      const [[row]] = await pool.query(
-        'SELECT agent_id AS user_id, nickname, profile_url FROM agents WHERE agent_id=? LIMIT 1',
-        [u.id]
-      );
-      return res.json({ ok: true, id: u.id, role: u.role, nickname: row?.nickname || null, profile_url: row?.profile_url || null });
-    }
-    return res.json({ ok: true, id: u.id, role: u.role });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok: false });
-  }
-});
-
-// ===== 공지: 목록(최신 N개) =====
+// ===== 공지: 목록 (모두 열람) =====
 app.get('/api/notices', async (req, res) => {
   try {
-    const limit = Math.max(1, Math.min(20, Number(req.query.limit) || 5));
+    const limit  = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const offset = Math.max(0, parseInt(req.query.offset) || 0);
     const [rows] = await pool.query(
-      `SELECT notice_id, title, created_at
+      `SELECT notice_id, title, created_at, updated_at
          FROM notices
         WHERE is_published=1
         ORDER BY created_at DESC
-        LIMIT ?`, [limit]
+        LIMIT ? OFFSET ?`,
+      [limit, offset]
     );
-    res.json({ ok: true, items: rows });
+    res.json({ ok:true, items: rows });
   } catch (e) {
-    console.error('GET /api/notices', e);
-    res.status(500).json({ ok:false, error:'server_error' });
+    console.error('list notices error:', e);
+    res.status(500).json({ ok:false });
   }
 });
 
-// ===== 공지: 단건 조회 =====
+// ===== 공지: 단건 (모두 열람) =====
 app.get('/api/notices/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -1790,7 +1952,9 @@ app.get('/api/notices/:id', async (req, res) => {
     const [[row]] = await pool.query(
       `SELECT notice_id, title, content, created_at, updated_at
          FROM notices
-        WHERE notice_id=? AND is_published=1`, [id]
+        WHERE notice_id=? AND is_published=1
+        LIMIT 1`,
+      [id]
     );
     if (!row) return res.status(404).json({ ok:false, error:'not_found' });
     res.json({ ok:true, notice: row });
@@ -1800,39 +1964,123 @@ app.get('/api/notices/:id', async (req, res) => {
   }
 });
 
-// ===== (선택) 관리자 전용: 생성/수정/삭제 =====
-// 관리자 인증/인가 미들웨어 예: requireAdmin
-app.post('/api/admin/notices', /*requireAdmin,*/ async (req, res) => {
-  const { title, content, is_published=1 } = req.body || {};
-  if (!title || !content) return res.status(400).json({ ok:false, error:'missing_fields' });
-  const [r] = await pool.query(
-    `INSERT INTO notices (title, content, is_published, author_admin_id)
-     VALUES (?, ?, ?, ?)`,
-    [title, content, is_published?1:0, req.session?.user?.id || null]
-  );
-  res.json({ ok:true, notice_id: r.insertId });
+// ===== 공지: 작성 (관리자만) =====
+app.post('/api/notices', async (req, res) => {
+  try {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+      return res.status(403).json({ ok:false, message: 'forbidden' });
+    }
+    const { title = '', content = '' } = req.body || {};
+    if (!title.trim() || !content.trim()) {
+      return res.status(400).json({ ok:false, message: 'title/content required' });
+    }
+    const authorId = req.session.user.id || null;
+    const [r] = await pool.query(
+      `INSERT INTO notices (title, content, author_admin_id, is_published)
+       VALUES (?, ?, ?, 1)`,
+      [title.trim(), content, authorId]
+    );
+    res.json({ ok:true, id:r.insertId });
+  } catch (e) {
+    console.error('create notice error:', e);
+    res.status(500).json({ ok:false });
+  }
 });
 
-app.put('/api/admin/notices/:id', /*requireAdmin,*/ async (req, res) => {
-  const id = Number(req.params.id);
-  const { title, content, is_published } = req.body || {};
-  if (!Number.isFinite(id)) return res.status(400).json({ ok:false, error:'bad_id' });
-  await pool.query(
-    `UPDATE notices
-        SET title = COALESCE(?, title),
-            content = COALESCE(?, content),
-            is_published = COALESCE(?, is_published)
-      WHERE notice_id=?`,
-    [title ?? null, content ?? null, (is_published==null? null : (is_published?1:0)), id]
-  );
-  res.json({ ok:true });
+// 최근 문의(에이전트 전용): 가장 최근 채팅방 1건
+app.get('/api/agents/me/recent-chat', async (req, res) => {
+  try {
+    const u = req.session?.user;
+    if (!u || u.role !== 'agent') {
+      return res.status(403).json({ ok:false, error:'forbidden' });
+    }
+
+    // chat_rooms(room_id, agent_id, user_id, created_at) 기준
+    // users에서 표시용 이름 가져오기
+    const [[row]] = await pool.query(
+      `SELECT r.room_id,
+              r.created_at,
+              u.user_id,
+              COALESCE(u.nickname, u.user_name, CONCAT('사용자 ', u.user_id)) AS user_name
+         FROM chat_rooms r
+         JOIN users u ON u.user_id = r.user_id
+        WHERE r.agent_id = ?
+        ORDER BY r.created_at DESC
+        LIMIT 1`,
+      [u.id]
+    );
+
+    if (!row) return res.json({ ok:true, room:null }); // 채팅 없음
+    res.json({ ok:true, room: row });
+  } catch (e) {
+    console.error('GET /api/agents/me/recent-chat', e);
+    res.status(500).json({ ok:false, error:'server_error' });
+  }
 });
 
-app.delete('/api/admin/notices/:id', /*requireAdmin,*/ async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) return res.status(400).json({ ok:false, error:'bad_id' });
-  await pool.query(`DELETE FROM notices WHERE notice_id=?`, [id]);
-  res.json({ ok:true });
+// 가이드 HWP 다운로드
+app.get('/api/guide', (req, res) => {
+  const file = path.join(__dirname, 'public', 'docs', '홈스팟_가이드.hwp');
+  res.download(file, '홈스팟_가이드.hwp', (err) => {
+    if (err) {
+      console.error('guide download error:', err);
+      if (!res.headersSent) res.status(404).send('file not found');
+    }
+  });
+});
+
+// === Tenant 메인 전용: 경량 검색 API (전체매물 포함) ===
+// GET /api/listings/search?type=all&q=마포&page=1&pageSize=12
+app.get('/api/listings/search', async (req, res) => {
+  try {
+    const rawType  = (req.query.type || 'all').trim().toLowerCase(); // apartment/officetel/rowhouse/detached/all
+    const q        = (req.query.q || '').trim();
+    const page     = Math.max(1, parseInt(req.query.page) || 1);
+    const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize) || 12));
+
+    const where = [`l.status='active'`];
+    const params = [];
+
+    if (rawType !== 'all') {
+      where.push(`l.property_type = ?`);
+      params.push(rawType);
+    }
+    if (q) {
+      const like = `%${q}%`;
+      where.push(`(l.title LIKE ? OR l.description LIKE ? OR l.sigungu LIKE ? OR l.road_name LIKE ? OR l.lot_no LIKE ?)`);
+      params.push(like, like, like, like, like);
+    }
+
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM listings l ${whereSql}`,
+      params
+    );
+
+    const offset = (page - 1) * pageSize;
+    const [rows] = await pool.query(
+      `
+      SELECT
+        l.listing_id, l.title, l.description,
+        l.property_type, l.deal_type,
+        l.price_sale_10k, l.deposit_10k, l.rent_10k, l.rent_pay_cycle, l.rent_annual_10k,
+        l.sigungu, l.road_name, l.lot_no,
+        l.created_at,
+        (SELECT li.image_url FROM listing_images li
+          WHERE li.listing_id = l.listing_id ORDER BY li.image_id ASC LIMIT 1) AS cover_image_url
+      FROM listings l
+      ${whereSql}
+      ORDER BY l.created_at DESC
+      LIMIT ? OFFSET ?
+      `,
+      [...params, pageSize, offset]
+    );
+
+    res.json({ ok:true, items: rows, total, page, pageSize });
+  } catch (e) {
+    console.error('listings/search error:', e);
+    res.status(500).json({ ok:false });
+  }
 });
 
 
