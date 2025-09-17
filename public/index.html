@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>전세안심봇 데모</title>
+  <style>
+    :root{--bg:#f5f6f8;--card:#fff;--line:#e5e7eb;--text:#111827;
+          --me:#4f46e5;--me-text:#fff;--bot:#e5e7ff;--bot-text:#111827;}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto}
+    .app{max-width:720px;margin:0 auto;display:flex;flex-direction:column;height:100dvh}
+    header{padding:14px 18px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+    header h1{margin:0;font-size:20px}
+    header p{margin:6px 0 0;color:#6b7280;font-size:13px}
+    .chat{flex:1;overflow:auto;padding:16px}
+    .list{display:flex;flex-direction:column;gap:10px}
+    .row{display:flex;gap:8px;align-items:flex-end}
+    .row.left{justify-content:flex-start}
+    .row.right{justify-content:flex-end}
+    .avatar{width:28px;height:28px;border-radius:50%;background:#d1d5db;flex:0 0 28px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#374151}
+    .bubble{max-width:70%;padding:10px 12px;border-radius:18px;white-space:pre-wrap;word-break:break-word;border:1px solid transparent}
+    .left .bubble{background:var(--bot);color:var(--bot-text);border-color:#c7cdfc}
+    .right .bubble{background:var(--me);color:var(--me-text)}
+    .time{font-size:11px;color:#9ca3af;margin:0 4px}
+    .composer{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);background:#fff;position:sticky;bottom:0}
+    .composer textarea{flex:1;resize:none;max-height:120px;height:42px;padding:10px;border:1px solid var(--line);border-radius:10px;font:16px/1.4 inherit}
+    .composer button{padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:#111827;color:#fff;cursor:pointer}
+    .composer button:disabled{opacity:.5;cursor:not-allowed}
+    @media (max-width:480px){.bubble{max-width:80%}}
+    .dots{display:inline-block;min-width:1.2em}
+    .dots:after{content:"";display:inline-block;width:1.2em;text-align:left;animation:dots 1.2s infinite}
+    @keyframes dots{0%{content:"."}33%{content:".."}66%{content:"..."}100%{content:"."}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>전세안심봇 데모</h1>
+      <p>전세/월세/연세, 전입·확정일자, 등기부/보증보험 등만 답변합니다.</p>
+    </header>
+
+    <main class="chat">
+      <div id="list" class="list"></div>
+    </main>
+
+    <div class="composer">
+      <textarea id="q" placeholder="메시지를 입력하세요 (Enter=전송, Shift+Enter=줄바꿈)"></textarea>
+      <button id="send">보내기</button>
+    </div>
+  </div>
+
+  <script>
+    // ===== 요소 참조 =====
+    const list = document.getElementById('list');
+    const q = document.getElementById('q');
+    const sendBtn = document.getElementById('send');
+
+    // ===== 세션 고정 =====
+    const sid = localStorage.getItem('sid') || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+    localStorage.setItem('sid', sid);
+
+    // file:// 로 열려도 동작
+    const base = location.origin.startsWith('http') ? location.origin : 'http://localhost:3000';
+
+    // 첫 메시지
+    addMsg('assistant', '안녕하세요. 전·월세/연세, 전입·확정일자, 등기부/보증보험 등 임대차 안전 정보만 안내합니다. 무엇을 도와드릴까요?');
+
+    // 이벤트
+    sendBtn.addEventListener('click', onSend);
+    q.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); }
+    });
+
+    async function onSend() {
+      const text = q.value.trim();
+      if (!text) return;
+      q.value = '';
+      addMsg('user', text);
+
+      const typingId = addTyping();
+      sendBtn.disabled = true;
+
+      try {
+        const r = await fetch(base + '/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: sid, user: text })
+        });
+
+        // 네트워크/서버 오류 처리
+        if (!r.ok) {
+          const t = await r.text().catch(()=>'');
+          throw new Error(`HTTP ${r.status} ${r.statusText} ${t && '- ' + t}`);
+        }
+
+        const data = await r.json().catch(() => ({}));
+        removeTyping(typingId);
+        addMsg('assistant', data.content || data.error || '(응답 없음)');
+      } catch (err) {
+        removeTyping(typingId);
+        addMsg('assistant', '에러: ' + (err?.message || err));
+      } finally {
+        sendBtn.disabled = false;
+        q.focus();
+      }
+    }
+
+    // ===== UI 유틸 =====
+    function addMsg(role, text) {
+      const row = document.createElement('div');
+      row.className = 'row ' + (role === 'user' ? 'right' : 'left');
+
+      if (role === 'assistant') {
+        const av = document.createElement('div');
+        av.className = 'avatar';
+        av.textContent = 'AI';
+        row.appendChild(av);
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+
+      const time = document.createElement('span');
+      time.className = 'time';
+      time.textContent = nowTime();
+
+      if (role === 'user') {
+        row.appendChild(time);
+        row.appendChild(bubble);
+      } else {
+        row.appendChild(bubble);
+        row.appendChild(time);
+      }
+
+      list.appendChild(row);
+      list.parentElement.scrollTop = list.parentElement.scrollHeight;
+      return row;
+    }
+
+    let typingSeq = 0;
+    function addTyping() {
+      const id = ++typingSeq;
+      const row = document.createElement('div');
+      row.dataset.id = 'typing-' + id;
+      row.className = 'row left';
+      const av = document.createElement('div');
+      av.className = 'avatar'; av.textContent = 'AI';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      const span = document.createElement('span');
+      span.className = 'dots';
+      bubble.appendChild(span);
+      const time = document.createElement('span');
+      time.className = 'time'; time.textContent = nowTime();
+      row.appendChild(av); row.appendChild(bubble); row.appendChild(time);
+      list.appendChild(row);
+      list.parentElement.scrollTop = list.parentElement.scrollHeight;
+      return id;
+    }
+    function removeTyping(id) {
+      const el = list.querySelector('[data-id="typing-' + id + '"]');
+      if (el) el.remove();
+    }
+    function nowTime() {
+      const d = new Date();
+      return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    }
+  </script>
+</body>
+</html>

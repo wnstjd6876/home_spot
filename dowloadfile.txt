@@ -1,0 +1,22 @@
+-------CMD에서 설치--------------
+winget install Ollama.Ollama
+ollama pull qwen2.5:3b-instruct
+
+-----프롬프트 텍스트파일 인식시키기----
+ollama create my-cs-bot-3b -f "D:\cs-bot-api\cs-bot-api\modelfile.txt"
+
+---이미 있다면 삭제-------------------------
+ollama rm my-cs-bot-3b  # 기존에 있으면
+
+
+--------백앤드------------------
+winget install OpenJS.NodeJS.LTS
+npm -v
+cd C:\cs-bot-api
+npm i
+$env:MODEL=my-cs-bot-3b
+$env:OLLAMA_HOST=http://localhost:11434
+npm start     :: (= node server.js)
+
+--------api 해제------------------
+cs-bot-api.zip를 C드라이브에 풀기
