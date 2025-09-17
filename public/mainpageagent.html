@@ -151,7 +151,7 @@
     <div class="card">
       <div class="section-title">
         <h3 style="margin:0">가이드</h3>
-        <a href="/api/guide" class="pill" title="홈스팟_가이드.hwp 내려받기">문서</a>
+        <a href="/api/guide" class="pill" title="홈스팟_가이드.hwp 내려받기">다운로드</a>
       </div>
       <div class="muted" style="margin-top:10px">
         사진 규격, 주소 작성법, 허위매물 방지 정책 등 운영 가이드를 확인하세요.
@@ -290,7 +290,8 @@
                       : `<div class="muted" style="display:flex;align-items:center;justify-content:center;height:100%">이미지 없음</div>`}
               </div>
               <div class="actions-under">
-                <a class="btn" href="/property_listing.html?edit=${i.listing_id}">수정</a>
+                <a class="btn" href="/property_listing.html?edit=${i.listing_id}"
+                onclick="openPopup(event, '/property_listing.html?edit=${i.listing_id}', '매물 수정')">수정</a>
                 <button class="btn danger" data-del="${i.listing_id}">삭제</button>
               </div>
             </div>

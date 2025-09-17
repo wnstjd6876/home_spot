@@ -1009,6 +1009,216 @@ app.delete('/api/listings/:id', async (req, res) => {
   }
 });
 
+// 내 매물 단건 조회
+app.get('/api/my-listings/:id', async (req, res) => {
+  try{
+    const u = req.session?.user;
+    if (!u || u.role !== 'agent') return res.status(401).json({ ok:false, message:'unauthorized' });
+
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ ok:false, message:'bad_id' });
+
+    // 본인 소유 + 이미지 포함
+    const [[item]] = await pool.query(
+      `SELECT l.*
+         FROM listings l
+        WHERE l.listing_id=? AND l.agent_id=? LIMIT 1`,
+      [id, u.id]
+    );
+    if (!item) return res.status(404).json({ ok:false, message:'not_found' });
+
+    const [images] = await pool.query(
+      `SELECT image_id, image_url FROM listing_images WHERE listing_id=? ORDER BY image_id`, [id]
+    );
+
+    return res.json({ ok:true, item: { ...item, images } });
+  }catch(e){
+    console.error(e);
+    return res.status(500).json({ ok:false, message:'server_error' });
+  }
+});
+
+
+app.put('/api/my-listings/:id', upload.array('images', 20), async (req, res) => {
+  const conn = await pool.getConnection();
+  try{
+    const u = req.session?.user;
+    if (!u || u.role !== 'agent') { return res.status(401).json({ ok:false, message:'unauthorized' }); }
+
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ ok:false, message:'bad_id' });
+
+    // 본인 소유 확인
+    const [[own]] = await conn.query(
+      'SELECT listing_id FROM listings WHERE listing_id=? AND agent_id=? LIMIT 1',
+      [id, u.id]
+    );
+    if (!own) return res.status(404).json({ ok:false, message:'not_found' });
+
+    // 폼 값 파싱(없는 값은 그대로 유지하고 싶으면 COALESCE 방식 or 동적 SET 생성)
+    const b = req.body;
+    const fields = {
+      title: b.title,
+      description: b.description,
+      property_type: b.property_type,
+      deal_type: b.deal_type,
+      sigungu: b.sigungu,
+      road_name: b.road_name,
+      lot_no: b.lot_no,
+      si: b.si, gu: b.gu, dong: b.dong,
+      area_m2: b.area_m2 || null,
+      gross_area_m2: b.gross_area_m2 || null,
+      land_area_m2: b.land_area_m2 || null,
+      floor: b.floor || null,
+      built_year: b.built_year || null,
+      price_sale_10k: b.price_sale_10k || null,
+      deposit_10k: b.deposit_10k || null,
+      rent_10k: b.rent_10k || null,
+      rent_pay_cycle: b.rent_pay_cycle || null,
+      status: b.status || 'active',
+      full_addr: b.full_addr || null,
+      lat: b.lat || null,
+      lng: b.lng || null,
+      // coord는 lat/lng로부터 서버에서 생성한다면 여기서 업데이트
+      // coord: (b.lat && b.lng) ? conn.escape(/* ST_SRID(POINT(lng,lat),4326) */) : undefined
+    };
+
+    // 동적 SET
+    const setCols = [];
+    const params  = [];
+    for (const [k,v] of Object.entries(fields)){
+      if (v !== undefined){ setCols.push(`${k}=?`); params.push(v); }
+    }
+    if (!setCols.length) return res.json({ ok:true }); // 변경 없음
+
+    await conn.beginTransaction();
+    await conn.query(`UPDATE listings SET ${setCols.join(', ')} WHERE listing_id=?`, [...params, id]);
+
+    // 새 이미지 추가(선택)
+    if (Array.isArray(req.files) && req.files.length){
+      const rows = req.files.map(f => [id, f.filename]); // filename → 실제 저장 정책에 맞게
+      await conn.query(
+        'INSERT INTO listing_images (listing_id, image_url) VALUES ?',
+        [rows]
+      );
+    }
+
+    await conn.commit();
+    return res.json({ ok:true });
+  }catch(e){
+    try{ await conn.rollback(); }catch{}
+    console.error(e);
+    return res.status(500).json({ ok:false, message:'server_error' });
+  }finally{
+    conn.release();
+  }
+});
+
+app.post('/api/my-listings/:id/replace', upload.array('images', 20), async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const u = req.session?.user;
+    if (!u || u.role !== 'agent') return res.status(401).json({ ok:false, message:'unauthorized' });
+
+    const oldId = Number(req.params.id);
+    if (!Number.isFinite(oldId)) return res.status(400).json({ ok:false, message:'bad_id' });
+
+    // 소유권 확인
+    const [[own]] = await conn.query(
+      'SELECT listing_id FROM listings WHERE listing_id=? AND agent_id=? LIMIT 1',
+      [oldId, u.id]
+    );
+    if (!own) return res.status(404).json({ ok:false, message:'not_found' });
+
+    const b = req.body;
+
+    // 새 레코드에 들어갈 필드 세팅
+    const fields = {
+      agent_id: u.id,
+      title: b.title,
+      description: b.description,
+      property_type: b.property_type,
+      deal_type: b.deal_type,
+      sigungu: b.sigungu,
+      road_name: b.road_name,
+      lot_no: b.lot_no,
+      si: b.si, gu: b.gu, dong: b.dong,
+      area_m2: b.area_m2 || null,
+      gross_area_m2: b.gross_area_m2 || null,
+      land_area_m2: b.land_area_m2 || null,
+      floor: b.floor || null,
+      built_year: b.built_year || null,
+      price_sale_10k: b.price_sale_10k || null,
+      deposit_10k: b.deposit_10k || null,
+      rent_10k: b.rent_10k || null,
+      rent_pay_cycle: b.rent_pay_cycle || null,
+      status: b.status || 'active',
+      full_addr: b.full_addr || null,
+      lat: b.lat || null,
+      lng: b.lng || null,
+      // coord를 lat/lng로 생성한다면 여기서 처리 (예: ST_SRID(POINT(lng,lat),4326))
+    };
+
+    // 동적 INSERT
+    const cols = Object.keys(fields).filter(k => fields[k] !== undefined);
+    const vals = cols.map(k => fields[k]);
+    const qs   = cols.map(()=>'?').join(',');
+
+    await conn.beginTransaction();
+
+    const [ins] = await conn.query(
+      `INSERT INTO listings (${cols.join(',')}) VALUES (${qs})`,
+      vals
+    );
+    const newId = ins.insertId;
+
+    // 이미지: 새로 업로드된 게 있으면 그걸로, 없으면 기존 이미지 복사(선택)
+    if (Array.isArray(req.files) && req.files.length){
+      const rows = req.files.map(f => [newId, f.filename]);
+      await conn.query(
+        'INSERT INTO listing_images (listing_id, image_url) VALUES ?',
+        [rows]
+      );
+    } else {
+      // 업로드 없으면 기존 이미지 복사 (원하면 유지)
+      const [oldImgs] = await conn.query(
+        'SELECT image_url FROM listing_images WHERE listing_id=? ORDER BY image_id',
+        [oldId]
+      );
+      if (oldImgs.length){
+        const rows = oldImgs.map(r => [newId, r.image_url]);
+        await conn.query(
+          'INSERT INTO listing_images (listing_id, image_url) VALUES ?',
+          [rows]
+        );
+      }
+    }
+
+    // 기존 매물 제거 방식 결정
+    const hard = String(req.query.hard || '').trim() === '1';
+    if (hard){
+      // 하드 삭제 (주의: FK 이슈 발생 가능)
+      await conn.query('DELETE FROM listing_images WHERE listing_id=?', [oldId]);
+      await conn.query('DELETE FROM listings WHERE listing_id=?', [oldId]);
+    } else {
+      // 소프트 삭제: 상태만 변경 → 목록 쿼리에서 status='active'만 노출되게 되어 있어야 함
+      await conn.query(
+        "UPDATE listings SET status='removed' WHERE listing_id=?",
+        [oldId]
+      );
+    }
+
+    await conn.commit();
+    return res.json({ ok:true, new_id: newId });
+  } catch (e) {
+    try { await conn.rollback(); } catch {}
+    console.error(e);
+    return res.status(500).json({ ok:false, message:'server_error' });
+  } finally {
+    conn.release();
+  }
+});
+
 // 내 매물 CSV 다운로드 (엑셀에서 바로 열림)
 app.get('/api/my-listings/export.csv', async (req, res) => {
   try {
@@ -2031,8 +2241,8 @@ app.get('/api/agents/me/recent-chat', async (req, res) => {
 
 // 가이드 HWP 다운로드
 app.get('/api/guide', (req, res) => {
-  const file = path.join(__dirname, 'public', 'docs', '홈스팟_가이드.hwp');
-  res.download(file, '홈스팟_가이드.hwp', (err) => {
+  const file = path.join(__dirname, 'public', 'docs', '홈스팟_가이드.hwpx');
+  res.download(file, '홈스팟_가이드.hwpx', (err) => {
     if (err) {
       console.error('guide download error:', err);
       if (!res.headersSent) res.status(404).send('file not found');
