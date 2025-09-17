@@ -1,0 +1,13 @@
+node_modules/
+.env
+*.log
+uploads/
+.DS_Store
+Thumbs.db
+NUL
+**/NUL
+CON
+PRN
+AUX
+COM*
+LPT*
