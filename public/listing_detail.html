@@ -427,17 +427,96 @@
 
   let CURRENT_LISTING = null;
 
-  async function loadDetail() {
-    const id = new URLSearchParams(location.search).get('id');
-    if(!id) return alert('id 누락');
+// 상세 정보 불러오기
+async function loadDetail() {
+  const id = new URLSearchParams(location.search).get('id');
+  if (!id) return alert('id 누락');
 
+  try {
     const res = await fetch(`/api/listings/${id}?full=1`);
     const data = await res.json();
     if (!data.ok) return alert('상세 불러오기 실패');
 
     CURRENT_LISTING = data.listing; // agent_id, listing_id 등 확보
-    // ... 기존 렌더 코드 진행 ...
+
+    // 제목
+    document.getElementById('title').textContent = CURRENT_LISTING.title || '-';
+
+    // 상세 스펙 렌더
+    renderDetailSpec(CURRENT_LISTING);
+
+    // 이미지 갤러리 (mainimg, thumbs)
+    if (data.images && data.images.length > 0) {
+      const main = document.getElementById('mainimg');
+      const thumbs = document.getElementById('thumbs');
+      main.src = data.images[0].image_url.startsWith('http')
+        ? data.images[0].image_url
+        : '/uploads/' + data.images[0].image_url;
+      thumbs.innerHTML = '';
+      data.images.forEach((img, idx) => {
+        const el = document.createElement('img');
+        el.src = img.image_url.startsWith('http')
+          ? img.image_url
+          : '/uploads/' + img.image_url;
+        if (idx === 0) el.classList.add('active');
+        el.addEventListener('click', () => {
+          main.src = el.src;
+          thumbs.querySelectorAll('img').forEach(t => t.classList.remove('active'));
+          el.classList.add('active');
+        });
+        thumbs.appendChild(el);
+      });
+    }
+
+    // 지도 표시
+    if (CURRENT_LISTING.lat && CURRENT_LISTING.lng) {
+      const mapContainer = document.getElementById('map');
+      const mapOption = {
+        center: new kakao.maps.LatLng(CURRENT_LISTING.lat, CURRENT_LISTING.lng),
+        level: 3
+      };
+      const map = new kakao.maps.Map(mapContainer, mapOption);
+      new kakao.maps.Marker({
+        position: new kakao.maps.LatLng(CURRENT_LISTING.lat, CURRENT_LISTING.lng),
+        map: map
+      });
+    } else {
+      document.getElementById('map').style.display = 'none';
+      document.getElementById('mapNote').style.display = 'block';
+    }
+
+    // 중개사 카드
+    document.getElementById('agentNick').textContent = CURRENT_LISTING.agent_nick || '-';
+    document.getElementById('agentName').textContent = CURRENT_LISTING.agent_name || '-';
+    document.getElementById('agentOffice').textContent = CURRENT_LISTING.agent_office || '-';
+    if (CURRENT_LISTING.agent_profile_url) {
+      document.getElementById('agentPhoto').src =
+        CURRENT_LISTING.agent_profile_url.startsWith('http')
+          ? CURRENT_LISTING.agent_profile_url
+          : '/uploads/' + CURRENT_LISTING.agent_profile_url;
+    }
+
+  } catch (err) {
+    console.error('loadDetail error', err);
+    alert('상세 로딩 중 오류');
   }
+}
+
+// 채팅 버튼 → chat.html 팝업 열기
+document.getElementById('btnContact2').addEventListener('click', () => {
+  if (!CURRENT_LISTING?.listing_id) {
+    alert("매물 ID가 없습니다.");
+    return;
+  }
+  window.open(
+    `/chat.html?listing_id=${CURRENT_LISTING.listing_id}`,
+    'chatPopup',
+    'width=480,height=640,resizable=yes,scrollbars=yes'
+  );
+});
+
+// 실행
+loadDetail();
 
   // 채팅 버튼
   document.getElementById('btnContact2')?.addEventListener('click', (e)=>{

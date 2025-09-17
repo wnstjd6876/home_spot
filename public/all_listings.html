@@ -411,7 +411,7 @@
     const rectKey = rect.map(n=>Number(n).toFixed(5)).join(',');
     const z = map.getLevel();
     const q = document.getElementById('q').value.trim();
-    const typeKey = [...selected.type].sort().join(',');
+    const typeKey = Array.from(selected.type).sort().join(',');
     const featKey = ['has_parking','allow_pet','is_full_option','has_veranda','has_garden','is_new_build','fee_included']
       .filter(k=>!!selected[k]).join(',');
     return [rectKey,z,q,typeKey,selected.deal,selected.minPrice,selected.maxPrice,selected.minArea,selected.maxArea,featKey].join('|');
@@ -430,7 +430,7 @@
     });
     const q = document.getElementById('q').value.trim(); if(q) qs.set('q', q);
 
-    if(selected.type.size) qs.set('type', [...selected.type].join(','));   // ★ 여러 유형
+    if(selected.type.size) qs.set('type', Array.from(selected.type).join(','));   // ★ 여러 유형
     if(selected.deal) qs.set('deal', selected.deal);
     const addNum=(k,v)=>{ const n=Number(v); if(Number.isFinite(n)&&n>=0) qs.set(k,String(n)); };
     addNum('minPrice', selected.minPrice); addNum('maxPrice', selected.maxPrice);
@@ -446,7 +446,7 @@
       clusterer.clear();
       const markers = (j.markers||[]).map(m=>{
         const mk = new kakao.maps.Marker({ position:new kakao.maps.LatLng(m.lat,m.lng) });
-        const label = document.createElement('div'); label.className='price-pin'; label.textContent = money10k(m.price_10k);
+        const label = document.createElement('div'); label.className='price-pin'; label.textContent = money10k(m.price_key_10k ?? m.price_10k ?? m.price);
         const ov = new kakao.maps.CustomOverlay({ content:label, position: mk.getPosition(), yAnchor:1 });
         kakao.maps.event.addListener(mk,'mouseover',()=>{ ensureOverlay(); ov.setMap(map); });
         kakao.maps.event.addListener(mk,'mouseout', ()=>{ ov.setMap(null); });

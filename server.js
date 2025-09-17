@@ -1145,12 +1145,23 @@ app.get('/api/map/listings', async (req, res) => {
     // 4) 동적 WHERE/파라미터 (보낸 값만 조건으로 추가)
     const where = [
       "l.status='active'",
-      "l.property_type = ?",
       "l.coord IS NOT NULL",
       "ST_Longitude(l.coord) BETWEEN ? AND ?",
       "ST_Latitude(l.coord)  BETWEEN ? AND ?"
     ];
-    const params = [type, west, east, south, north];
+    const params = [west, east, south, north];
+
+    // 타입 파싱 (멀티 지원)
+    const rawTypes = String(type||'').split(',').map(s=>s.trim()).filter(Boolean);
+    const allow = new Set(['apartment','officetel','rowhouse','detached']);
+    const types = rawTypes.filter(t=>allow.has(t));
+    if (types.length <= 1) {
+      where.unshift("l.property_type = ?");
+      params.unshift(types[0] || 'apartment');
+    } else {
+      where.unshift(`l.property_type IN (${types.map(()=>'?').join(',')})`);
+      params.unshift(...types);
+    }
 
     const addStr = (sql, v) => { if (v && String(v).trim() !== '') { where.push(sql); params.push(String(v).trim()); } };
     const addNum = (sql, v) => {
