@@ -5,14 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>홈스팟 – 중개사</title>
 <style>
-  .input{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;outline:none}
-  .pager{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center}
-  .pager .btn[disabled]{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
-  .pager .num{padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer}
-  .pager .num.active{background:#2563eb;color:#fff;border-color:#2563eb}
   :root{
     --bg:#f7f8fb; --panel:#ffffff; --line:#e6e8ee; --text:#0f172a; --muted:#6b7280;
     --shadow:0 10px 30px rgba(17,24,39,.06);
+    --brand:#B3E5FC;
+    --brand-fore:#000;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 ui-sans-serif,system-ui,'Noto Sans KR',sans-serif}
@@ -20,135 +17,153 @@
   header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);z-index:20}
   .wrap{max-width:1200px;margin:0 auto;padding:16px 24px}
   .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-  .brand{display: flex; align-items: center; gap: 10px; font-weight: 800;}
-  .logo {
-      width: 23px;
-      height: 23px;
-      border-radius: 8px;
-      object-fit: cover;
-    }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800}
+  .logo{width:23px;height:23px;border-radius:8px;object-fit:cover}
   .right{margin-left:auto;display:flex;gap:10px}
-  .btn{padding:10px 14px;border: 1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer}
-  .btn.primary{background:#B3E5FC; border-color:transparent; color: #000;}
+  .btn {
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 15px;      
+    font-family: inherit; 
+  }
+  .btn.primary
+  {
+    background: var(--brand);
+    border-color:transparent;
+    color:var(--brand-fore);
+  }
   .btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.08)}
+  .btn.danger{border-color:#fecaca}
+  .btn.danger:hover{background:#fee2e2}
   .pill{border-radius:999px;padding:6px 10px;border:1px solid var(--line);background:#fff;font-size:12px;color:#334155}
-
-  /* 배너 */
-  .notice{display:flex;gap:16px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:16px 18px;
-    background:linear-gradient(135deg,#eff6ff,#f5f3ff);box-shadow:var(--shadow)}
+  .input{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;outline:none}
+  .muted{color:var(--muted)}
+  .section-title{display:flex;align-items:center;justify-content:space-between;margin-top:22px}
+  .placeholder{padding:14px;border:1px dashed var(--line);border-radius:12px;background:#fff;color:#6b7280;text-align:center}
 
   /* Grid & Card */
   .grid{display:grid;gap:16px}
-  .grid.grid-auto {
-  display: flex !important;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.grid.grid-auto > .card.kpi {
-  flex: none;
-  width: 280px;
-  height: 140px;
-  border-radius: 14px;
-  padding: 16px 18px;
-  box-shadow: var(--shadow);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: #fff;
-}
-
   .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
   @media (max-width:1024px){.grid-3{grid-template-columns:1fr}}
   .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
-  .muted{color:var(--muted)}
-  .section-title{display:flex;align-items:center;justify-content:space-between;margin-top:22px}
 
-  /* 컬러 KPI 카드 */
+  /* KPI */
   .kpi{color:#fff;display:flex;align-items:center;justify-content:space-between}
   .kpi .num{font-size:26px;font-weight:800}
-  .kpi.views{background:linear-gradient(135deg,#60a5fa,#3b82f6);}
-  .kpi.asks {background:linear-gradient(135deg,#34d399,#059669);}
-  .kpi.pending{background:linear-gradient(135deg,#fbbf24,#f59e0b);}
+  .kpi.views{background:linear-gradient(135deg,#60a5fa,#3b82f6)}
+  .kpi.asks{background:linear-gradient(135deg,#34d399,#059669)}
+  .kpi.cta{background:linear-gradient(135deg,#2563eb,#60a5fa)}
+  .kpi.inbox{background:linear-gradient(135deg,#f472b6,#ec4899)}
 
-  /* 빠른 액션 (컬러 카드) */
-  .actions {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(2, 280px);
-  justify-content: center;
-}
-  .action{width: 280px; height: 140px;flex:1 1 220px;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-radius:14px;color:#fff}
-  .action.manage {background:linear-gradient(135deg,#8b5cf6,#6366f1);}
-  .action.create {background:linear-gradient(135deg,#2563eb,#60a5fa);}
-  .action.inbox  {background:linear-gradient(135deg,#f472b6,#ec4899);}
+  /* Pager */
+  .pager{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center}
+  .pager .btn[disabled]{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+  .pager .num{padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer}
+  .pager .num.active
+  {
+    background:var(--brand);
+    border-color:transparent;
+    color:var(--brand-fore);
+  }
+  /* Slide alert panel */
+  #slideAlertPanel{
+    position:fixed;top:0;right:-320px;width:320px;height:100vh;background:#fff;
+    box-shadow:-4px 0 12px rgba(0,0,0,.1);transition:right .3s ease;z-index:1000;padding:20px;overflow-y:auto
+  }
+  #slideAlertPanel.open{right:0}
+  #slideAlertPanel header{font-weight:700;font-size:18px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+  #slideAlertPanel .closeBtn{background:none;border:none;font-size:22px;cursor:pointer}
 
-  /* 테이블 */
-  table{width:100%;border-collapse:collapse}
-  th,td{padding:12px;border-bottom:1px solid var(--line);text-align:left}
-  th{background:#fcfcff}
+  /* ▼▼ 본문 '알림 목록'만 숨김(패널 기능은 유지) ▼▼ */
+  #alertsSource { display:none !important; }
+  .section-title:has(+ #alertsSource) { display:none !important; }
 
-  /* placeholder */
-  .placeholder{padding:14px;border:1px dashed var(--line);border-radius:12px;background:#fff;color:#6b7280;text-align:center}
-  .grid-auto { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-  .meta { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:4px; }
-  .btn.danger { border-color:#fecaca; }
-  .btn.danger:hover { background:#fee2e2; }
+  /* ===== 등록된 매물 카드 텍스트 가로 강제 ===== */
+  #agent-list, #agent-list * { writing-mode: horizontal-tb !important; }
+  #agent-list .card { word-break: keep-all; }
+  #agent-list .card .row { flex-wrap: nowrap !important; align-items: flex-start; }
+  #agent-list .card .pill { white-space: nowrap; display: inline-flex; align-items: center; }
+  #agent-list .card [style*="min-width:0"] { min-width: 1px; }
 </style>
 </head>
 <body>
+<!-- ===== Header ===== -->
 <header>
   <div class="wrap row">
     <div class="brand">
-      <img class="logo" src="home.jpg" alt="로고" />
+      <img class="logo" src="home.jpg" alt="홈스팟 로고"/>
       홈스팟
     </div>
-    <nav class="right">
-      <a class="btn" href="#">알림</a>
-      <a class="btn" href="login.html">로그인</a>
-      <a class="btn primary" href="agent_signup.html">회원가입</a>
+    <nav class="right" aria-label="상단 메뉴">
+      <button id="alertBtn" class="btn" type="button" aria-haspopup="true" aria-controls="slideAlertPanel">알림</button>
+      <a class="btn" href="profile_setting.html">프로필</a>
+      <!-- 기본값: 로그아웃으로 표시 (href 제거) -->
+      <a id="logoutBtn" class="btn primary">로그아웃</a>
     </nav>
   </div>
 </header>
 
-<main class="wrap">
-  <!-- 배너 -->
-  <div class="notice" style="margin-top:12px">
-    <div style="font-size:22px">📢</div>
-    <div style="flex:1">
-      <b>검수 정책 개편</b> – 최근 등록 매물은 평균 <b>2시간 이내</b> 검수 완료. 사진 규격/주소 표기 가이드를 확인하세요.
-    </div>
-    <button class="btn">가이드 보기</button>
-  </div>
+<!-- ===== Slide Alert Panel ===== -->
+<aside id="slideAlertPanel" aria-hidden="true" role="region" aria-label="알림 패널">
+  <header>
+    <span>알림</span>
+    <button class="closeBtn" type="button" aria-label="닫기">&times;</button>
+  </header>
+  <ul id="slideAlertList" style="padding-left:18px;margin:0">
+    <li class="muted">알림 데이터를 여기에 표시합니다</li>
+  </ul>
+</aside>
 
-<section class="dashboard-wrap" style="margin-top:16px; display:flex; gap:16px; flex-wrap:nowrap; justify-content:center;">
-  <div class="card kpi views" style="flex:1; min-width: 200px;">
-    <div>
-      <div class="muted" style="color:#e3f2ff">오늘 조회수</div>
-      <div class="num" id="kpi-views">1,248</div>
+<!-- ===== Main ===== -->
+<main class="wrap">
+
+  <!-- KPI / Actions -->
+  <section class="dashboard-wrap" style="margin-top:16px;display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
+    <div class="card kpi views" style="flex:1;min-width:220px">
+      <div>
+        <div class="muted" style="color:#e3f2ff">오늘 조회수</div>
+        <div class="num" id="kpi-views">1,248</div>
+      </div>
+      <div aria-hidden="true">📈</div>
     </div>
-    <div>📈</div>
-  </div>
-  <div class="card kpi asks" style="flex:1; min-width: 200px;">
-    <div>
-      <div class="muted" style="color:#dcfce7">오늘 문의수</div>
-      <div class="num" id="kpi-asks">24</div>
+
+    <div class="card kpi asks" style="flex:1;min-width:220px">
+      <div>
+        <div class="muted" style="color:#dcfce7">오늘 문의수</div>
+        <div class="num" id="kpi-asks">24</div>
+      </div>
+      <div aria-hidden="true">💬</div>
     </div>
-    <div>💬</div>
-  </div>
-  <div class="action create" style="flex:1; min-width: 200px; height: auto; padding: 16px 18px; border-radius: 14px; color:#fff; display:flex; align-items:center; justify-content:space-between; background: linear-gradient(135deg,#2563eb,#60a5fa);">
-    <div><b>매물 등록</b><div class="muted" style="color:#e5f1ff">사진/옵션/주소 입력</div></div>
-    <a class="btn" href="property_listing.html" style="color:#0f172a;font-weight:700">등록</a>
-  </div>
-  <div class="action inbox" style="flex:1; min-width: 200px; height: auto; padding: 16px 18px; border-radius: 14px; color:#fff; display:flex; align-items:center; justify-content:space-between; background: linear-gradient(135deg,#f472b6,#ec4899);">
-    <div>
-    <b>문의함</b>
-    <div class="muted" style="color:#ffe4f1">실시간 상담 연결</div>
-  </div>
-  <button class="btn" onclick="openChatPopup()">문의함</button>
-  </div>
-</section>
+
+    <div class="card kpi cta" style="flex:1;min-width:220px">
+      <div>
+        <b>매물 등록</b>
+        <div class="muted" style="color:#e5f1ff">사진/옵션/주소 입력</div>
+      </div>
+      <a class="btn" href="property_listing.html" style="color:#0f172a;font-weight:700">등록</a>
+    </div>
+
+    <div class="card kpi inbox" style="flex:1;min-width:220px">
+      <div>
+        <b>문의함</b>
+        <div class="muted" style="color:#ffe4f1">실시간 상담 연결</div>
+      </div>
+      <button class="btn" type="button" onclick="openChatPopup()">열기</button>
+    </div>
+  </section>
+
+  <!-- 알림(원본 리스트: 패널에 복사해 사용) -->
+  <section class="section-title" style="margin-top:24px">
+    <h2 style="margin:0">알림 목록</h2>
+  </section>
+  <ul id="alertsSource" style="padding-left:18px;margin-top:6px">
+    <li>내일 계약 미팅 있음</li>
+    <li>새로운 문의가 도착했습니다</li>
+    <li>임대 매물 3건 업데이트 필요</li>
+  </ul>
 
   <!-- 최근 문의/알림/가이드 -->
   <section class="grid grid-3" style="margin-top:16px">
@@ -158,7 +173,7 @@
     </div>
     <div class="card">
       <div class="section-title"><h3 style="margin:0">알림</h3><span class="pill">지난 24시간</span></div>
-      <ul id="alerts" style="margin:8px 0 0 18px;padding:0">
+      <ul id="alertsMirror" style="margin:8px 0 0 18px;padding:0">
         <li class="muted">알림 데이터 연결 전…</li>
       </ul>
     </div>
@@ -171,182 +186,269 @@
   </section>
 
   <!-- 등록된 매물 -->
-<div class="section-title">
-  <h2 style="margin:22px 0 6px">등록된 매물</h2>
-  <div style="display:flex;gap:8px;align-items:center">
-    <input id="listing-search" type="search" placeholder="제목/설명/주소 검색" class="input" style="width:280px">
-    <span class="pill">조회수/문의수 실시간 반영 예정</span>
-    <button class="btn" onclick="alert('엑셀 다운로드 (추후)')">엑셀 다운로드</button>
+  <div class="section-title">
+    <h2 style="margin:22px 0 6px">등록된 매물</h2>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input id="listing-search" type="search" placeholder="제목/설명/주소 검색" class="input" style="width:280px" aria-label="매물 검색">
+      <span class="pill">조회수/문의수 실시간 반영 예정</span>
+      <button class="btn" type="button" onclick="alert('엑셀 다운로드 (추후)')">엑셀 다운로드</button>
+    </div>
   </div>
-</div>
-<div id="agent-list" class="placeholder" style="margin-top:8px">
-  등록된 매물 데이터 불러오기 예정…
-</div>
-<div id="agent-pager" style="margin-top:12px"></div>
+  <div id="agent-list" class="placeholder" style="margin-top:8px">
+    등록된 매물 데이터 불러오기 예정…
+  </div>
+  <div id="agent-pager" style="margin-top:12px"></div>
 
-<script>
-(function(){
-  const state = { page:1, pageSize:10, q:'' };
-
-  const fmt = n => (n==null ? '' : Number(n).toLocaleString('ko-KR'));
-  const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const propText = p => ({ apartment:'아파트', officetel:'오피스텔', rowhouse:'빌라/연립', detached:'단독/다가구' }[p] || p);
-  const statusText = s => ({ active:'노출중', sold:'거래완료', removed:'비공개' }[s] || s);
-  function dealText(i){
-    if(i.deal_type==='sale')     return `매매 ${fmt(i.price_sale_10k)}만원`;
-    if(i.deal_type==='jeonse')   return `전세 ${fmt(i.deposit_10k)}만원`;
-    if(i.deal_type==='monthly'){
-      if(i.rent_pay_cycle==='yearly') return `연세 보증금 ${fmt(i.deposit_10k)} / 연세 ${fmt(i.rent_annual_10k)}만원`;
-      return `월세 ${fmt(i.deposit_10k)} / ${fmt(i.rent_10k)}만원`;
-    }
-    return i.deal_type;
-  }
-
-  const qs = (o)=>Object.entries(o).map(([k,v])=>`${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-
-  async function loadMyListings(){
-    const listBox  = document.getElementById('agent-list');
-    const pagerBox = document.getElementById('agent-pager');
-    listBox.textContent = '불러오는 중…';
-    pagerBox.innerHTML = '';
-
-    const res  = await fetch(`/api/my-listings?${qs({page:state.page,pageSize:state.pageSize,q:state.q})}`, { credentials:'same-origin' });
-    if(!res.ok){ listBox.textContent = '불러오기 실패'; return; }
-    const data = await res.json();
-    if(!data.ok){ listBox.textContent = '불러오기 실패'; return; }
-
-    const { items=[], total=0 } = data;
-    if(items.length===0){
-      listBox.innerHTML = '<div class="placeholder">등록된 매물이 없습니다.</div>';
-      return;
-    }
-
-    // ----- 목록 렌더(카드 3열) -----
-    const grid = document.createElement('div');
-    grid.className = 'grid grid-3';
-    items.forEach(i => {
-      const img = i.main_image_url ? `/uploads/${i.main_image_url}` : null;
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.innerHTML = `
-        <div class="row" style="gap:12px;align-items:flex-start">
-          <div class="thumb" style="width:140px;height:100px;border-radius:12px;background:#f2f4f8;overflow:hidden;flex:0 0 140px">
-            ${img ? `<img src="${img}" alt="" style="width:100%;height:100%;object-fit:cover">`
-                  : `<div class="muted" style="display:flex;align-items:center;justify-content:center;height:100%">이미지 없음</div>`}
-          </div>
-          <div style="flex:1">
-            <div class="meta">
-              <span class="pill">${propText(i.property_type)}</span>
-              <span class="pill">${dealText(i)}</span>
-              <span class="pill">${statusText(i.status)}</span>
-            </div>
-            <div style="font-weight:800">${esc(i.title)}</div>
-            ${i.description ? `<div class="muted" style="margin-top:4px;max-height:3.3em;overflow:hidden">${esc(i.description)}</div>` : ''}
-            <div class="muted" style="margin-top:6px;font-size:12px">등록일 ${new Date(i.created_at).toLocaleDateString('ko-KR')}</div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <a class="btn" href="/property_listing.html?edit=${i.listing_id}">수정</a>
-            <button class="btn danger" data-del="${i.listing_id}">삭제</button>
-          </div>
-        </div>`;
-      grid.appendChild(card);
-    });
-    listBox.replaceWith(grid);
-    grid.id = 'agent-list';
-
-    // ----- 페이저 렌더 -----
-    const pages = Math.max(1, Math.ceil(total / state.pageSize));
-    if (pages > 1){
-      const p = document.createElement('div');
-      p.className = 'pager';
-      const prev = document.createElement('button');
-      prev.className = 'btn'; prev.textContent = '이전';
-      prev.disabled = state.page <= 1;
-      prev.onclick = () => { state.page--; loadMyListings(); };
-
-      const next = document.createElement('button');
-      next.className = 'btn'; next.textContent = '다음';
-      next.disabled = state.page >= pages;
-      next.onclick = () => { state.page++; loadMyListings(); };
-
-      p.appendChild(prev);
-
-      // 중앙 숫자(최대 7개 윈도우)
-      const win = 3;
-      const start = Math.max(1, state.page - win);
-      const end   = Math.min(pages, state.page + win);
-      for (let i = start; i <= end; i++){
-        const b = document.createElement('button');
-        b.className = 'num' + (i===state.page ? ' active' : '');
-        b.textContent = i;
-        b.onclick = () => { state.page = i; loadMyListings(); };
-        p.appendChild(b);
-      }
-
-      p.appendChild(next);
-      pagerBox.replaceChildren(p);
-    } else {
-      pagerBox.innerHTML = '';
-    }
-  }
-
-  // 검색 입력(디바운스)
-  function debounce(fn,ms){let t;return function(...a){clearTimeout(t);t=setTimeout(()=>fn.apply(this,a),ms)}}
-  const searchInput = document.getElementById('listing-search');
-  if (searchInput){
-    const run = debounce(()=>{ state.q = searchInput.value.trim(); state.page = 1; loadMyListings(); }, 300);
-    searchInput.addEventListener('input', run);
-    searchInput.addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); run(); } });
-  }
-
-  // 삭제 버튼(성공 시 목록 리로드)
-  document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('button.btn.danger[data-del]');
-    if (!btn) return;
-    const id = btn.getAttribute('data-del');
-    if (!confirm('정말 삭제하시겠어요?')) return;
-
-    const res = await fetch(`/api/listings/${id}`, { method:'DELETE', credentials:'same-origin' });
-    const out = await res.json().catch(()=>({}));
-    if (res.ok && out.ok) {
-      // 현재 페이지에서 아이템 1개 지워졌으니 상황에 따라 앞 페이지로 당겨주기
-      if (document.querySelectorAll('#agent-list .card').length === 1 && state.page > 1) {
-        state.page -= 1;
-      }
-      loadMyListings();
-    } else {
-      alert(out.message || '삭제 실패');
-    }
-  });
-
-  // 최초 로딩
-  document.addEventListener('DOMContentLoaded', loadMyListings);
-})();
-</script>
-<script>
-  function openChatPopup() {
-    const width = 600;
-    const height = 800;
-    const left = (window.screen.width - width) / 2;
-    const top = (window.screen.height - height) / 2;
-
-    window.open(
-      'chat.html',
-      'chatWindow',
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes`
-    );
-  }
-</script>
 </main>
 
+<!-- ===== Scripts ===== -->
 <script>
-  // KPI 시각효과 (나중에 API/WebSocket으로 교체)
+  // 알림 패널 토글
+  (function(){
+    const btn = document.getElementById('alertBtn');
+    const panel = document.getElementById('slideAlertPanel');
+    const closeBtn = panel.querySelector('.closeBtn');
+    const alertsSource = document.getElementById('alertsSource');
+    const slideList = document.getElementById('slideAlertList');
+    const alertsMirror = document.getElementById('alertsMirror');
+
+    function openPanel(){
+      slideList.innerHTML = alertsSource.innerHTML;
+      alertsMirror.innerHTML = alertsSource.innerHTML;
+      panel.classList.add('open');
+      panel.setAttribute('aria-hidden','false');
+    }
+    function closePanel(){
+      panel.classList.remove('open');
+      panel.setAttribute('aria-hidden','true');
+    }
+
+    btn.addEventListener('click', (e)=>{ e.preventDefault(); 
+      if(panel.classList.contains('open')) closePanel(); else openPanel();
+    });
+    closeBtn.addEventListener('click', closePanel);
+    panel.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closePanel(); });
+  })();
+
+  // KPI 시각효과 (데모용)
   setInterval(()=>{
-    const f=n=>n.toLocaleString();
-    const v=document.getElementById('kpi-views'), a=document.getElementById('kpi-asks');
+    const f=n=>n.toLocaleString('ko-KR');
+    const v=document.getElementById('kpi-views');
+    const a=document.getElementById('kpi-asks');
     v.textContent=f(parseInt(v.textContent.replace(/,/g,''))+Math.floor(Math.random()*3));
     a.textContent=(parseInt(a.textContent)+(Math.random()<.3?1:0));
   },3000);
+
+  // 문의 팝업
+  function openChatPopup(){
+    const width=600, height=800;
+    const left=(window.screen.width-width)/2;
+    const top=(window.screen.height-height)/2;
+    window.open('chat.html','chatWindow',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes`);
+  }
+
+  // ▼▼ 로그인 상태 버튼 세팅 (localStorage 사용) ▼▼
+  (function () {
+    const btn = document.getElementById('logoutBtn');
+
+    const qs = new URLSearchParams(location.search);
+    if (qs.get('loggedIn') === '1') {
+      localStorage.setItem('isLoggedIn', '1');
+      history.replaceState({}, '', location.pathname);
+    }
+
+    function setBtn(loggedIn) {
+      if (loggedIn) {
+        btn.textContent = '로그아웃';
+        btn.removeAttribute('href');
+        btn.dataset.state = 'in';
+      } else {
+        btn.textContent = '로그인';
+        btn.setAttribute('href', 'login.html');
+        btn.dataset.state = 'out';
+      }
+    }
+
+    const stored = localStorage.getItem('isLoggedIn');
+    const isLoggedIn = (stored === null) ? true : (stored === '1');
+    setBtn(isLoggedIn);
+
+    btn.addEventListener('click', function (e) {
+      if (btn.dataset.state === 'in') {
+        e.preventDefault();
+        localStorage.removeItem('isLoggedIn');
+        setBtn(false);
+
+        /* ▼▼ 로그아웃 직후: 알림/목록 UI 초기화 ▼▼ */
+        try {
+          // 알림 카드 초기화
+          const alertsMirror = document.getElementById('alertsMirror');
+          if (alertsMirror) {
+            alertsMirror.innerHTML = '<li class="muted">알림 데이터 연결 전…</li>';
+          }
+          // 알림 패널 리스트 초기화 + 닫기
+          const slideList = document.getElementById('slideAlertList');
+          if (slideList) {
+            slideList.innerHTML = '<li class="muted">알림 데이터를 여기에 표시합니다</li>';
+          }
+          const panel = document.getElementById('slideAlertPanel');
+          if (panel) {
+            panel.classList.remove('open');
+            panel.setAttribute('aria-hidden', 'true');
+          }
+          // 등록된 매물 목록/페이저 숨김
+          const listBox = document.getElementById('agent-list');
+          const pagerBox = document.getElementById('agent-pager');
+          if (listBox)  listBox.innerHTML = '<div class="placeholder">로그인 후 확인하세요.</div>';
+          if (pagerBox) pagerBox.innerHTML = '';
+        } catch (e) { /* no-op */ }
+        /* ▲▲ 여기까지만 추가 ▲▲ */
+
+        alert('로그아웃이 완료되었습니다');
+      }
+    });
+  })();
+
+  // 매물 목록 로딩 모듈
+  (function(){
+    const state={ page:1, pageSize:9, q:'' };
+
+    const fmt = n => (n==null ? '' : Number(n).toLocaleString('ko-KR'));
+    const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const propText = p => ({ apartment:'아파트', officetel:'오피스텔', rowhouse:'빌라/연립', detached:'단독/다가구' }[p] || p);
+    const statusText = s => ({ active:'노출중', sold:'거래완료', removed:'비공개' }[s] || s);
+    function dealText(i){
+      if(i.deal_type==='sale')     return `매매 ${fmt(i.price_sale_10k)}만원`;
+      if(i.deal_type==='jeonse')   return `전세 ${fmt(i.deposit_10k)}만원`;
+      if(i.deal_type==='monthly'){
+        if(i.rent_pay_cycle==='yearly') return `연세 보증금 ${fmt(i.deposit_10k)} / 연세 ${fmt(i.rent_annual_10k)}만원`;
+        return `월세 ${fmt(i.deposit_10k)} / ${fmt(i.rent_10k)}만원`;
+      }
+      return i.deal_type;
+    }
+    const qs = o => Object.entries(o).map(([k,v])=>`${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+
+    async function loadMyListings(){
+      const listBox=document.getElementById('agent-list');
+      const pagerBox=document.getElementById('agent-pager');
+      listBox.textContent='불러오는 중…';
+      pagerBox.innerHTML='';
+
+      let res;
+      try{
+        res = await fetch(`/api/my-listings?${qs({page:state.page,pageSize:state.pageSize,q:state.q})}`, { credentials:'same-origin' });
+      }catch(e){
+        listBox.textContent='네트워크 오류';
+        return;
+      }
+      if(!res.ok){ listBox.textContent='불러오기 실패'; return; }
+      const data = await res.json().catch(()=>({}));
+      if(!data || data.ok===false){ listBox.textContent='불러오기 실패'; return; }
+
+      const { items=[], total=0 } = data;
+      if(items.length===0){
+        listBox.innerHTML='<div class="placeholder">등록된 매물이 없습니다.</div>';
+        return;
+      }
+
+      // 목록 렌더 (버튼을 정보 밑으로 이동)
+      const grid=document.createElement('div');
+      grid.className='grid grid-3';
+      items.forEach(i=>{
+        const img = i.main_image_url ? `/uploads/${i.main_image_url}` : null;
+        const card=document.createElement('div');
+        card.className='card';
+        card.innerHTML=`
+          <div class="row" style="gap:12px;align-items:flex-start">
+            <div class="thumb" style="width:140px;height:100px;border-radius:12px;background:#f2f4f8;overflow:hidden;flex:0 0 140px">
+              ${img ? `<img src="${img}" alt="${esc(i.title)} 대표 이미지" style="width:100%;height:100%;object-fit:cover">`
+                    : `<div class="muted" style="display:flex;align-items:center;justify-content:center;height:100%">이미지 없음</div>`}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div class="meta" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
+                <span class="pill">${propText(i.property_type)}</span>
+                <span class="pill">${dealText(i)}</span>
+                <span class="pill">${statusText(i.status)}</span>
+              </div>
+              <div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(i.title)}</div>
+              ${i.description ? `<div class="muted" style="margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(i.description)}</div>` : ''}
+              <div class="muted" style="margin-top:6px;font-size:12px">등록일 ${new Date(i.created_at).toLocaleDateString('ko-KR')}</div>
+              <div style="display:flex;gap:8px;margin-top:10px">
+                <a class="btn" href="/property_listing.html?edit=${i.listing_id}">수정</a>
+                <button class="btn danger" data-del="${i.listing_id}" type="button">삭제</button>
+              </div>
+            </div>
+          </div>`;
+        grid.appendChild(card);
+      });
+      listBox.replaceWith(grid);
+      grid.id='agent-list';
+
+      // 페이저
+      const pages=Math.max(1, Math.ceil(total/state.pageSize));
+      if(pages>1){
+        const p=document.createElement('div');
+        p.className='pager';
+        const prev=document.createElement('button');
+        prev.className='btn'; prev.textContent='이전';
+        prev.disabled = state.page<=1;
+        prev.onclick=()=>{ state.page--; loadMyListings(); };
+
+        const next=document.createElement('button');
+        next.className='btn'; next.textContent='다음';
+        next.disabled = state.page>=pages;
+        next.onclick=()=>{ state.page++; loadMyListings(); };
+
+        p.appendChild(prev);
+
+        const win=3;
+        const start=Math.max(1, state.page-win);
+        const end=Math.min(pages, state.page+win);
+        for(let i=start;i<=end;i++){
+          const b=document.createElement('button');
+          b.className='num'+(i===state.page?' active':'');
+          b.textContent=i;
+          b.onclick=()=>{ state.page=i; loadMyListings(); };
+          p.appendChild(b);
+        }
+        p.appendChild(next);
+        document.getElementById('agent-pager').replaceChildren(p);
+      }else{
+        document.getElementById('agent-pager').innerHTML='';
+      }
+    }
+
+    // 검색 디바운스
+    function debounce(fn,ms){let t;return function(...a){clearTimeout(t);t=setTimeout(()=>fn.apply(this,a),ms)}}
+    const searchInput=document.getElementById('listing-search');
+    if(searchInput){
+      const run=debounce(()=>{ state.q=searchInput.value.trim(); state.page=1; loadMyListings(); },300);
+      searchInput.addEventListener('input', run);
+      searchInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); run(); } });
+    }
+
+    // 삭제 핸들러
+    document.addEventListener('click', async (e)=>{
+      const btn=e.target.closest('button.btn.danger[data-del]');
+      if(!btn) return;
+      const id=btn.getAttribute('data-del');
+      if(!confirm('정말 삭제하시겠어요?')) return;
+      const res=await fetch(`/api/listings/${id}`,{ method:'DELETE', credentials:'same-origin' });
+      const out=await res.json().catch(()=>({}));
+      if(res.ok && out.ok){
+        if(document.querySelectorAll('#agent-list .card').length===1 && state.page>1){
+          state.page-=1;
+        }
+        loadMyListings();
+      }else{
+        alert(out.message || '삭제 실패');
+      }
+    });
+
+    // 최초 로딩
+    document.addEventListener('DOMContentLoaded', loadMyListings);
+  })();
 </script>
 </body>
 </html>

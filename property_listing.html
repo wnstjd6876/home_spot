@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -88,6 +88,20 @@
     .thumb{position:relative; border:1px solid var(--border); border-radius:10px; overflow:hidden}
     .thumb img{width:100%; height:100px; object-fit:cover; display:block}
     .thumb button{position:absolute; right:6px; top:6px; font-size:12px; border:1px solid #ff6b81; background:#2a1218; color:#ffd4d9; border-radius:8px; padding:4px 8px; cursor:pointer}
+    html[data-theme="light"] {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-weak: #e8f0ff;
+      --ring: 0 0 0 4px rgba(37, 99, 235, .15);
+      --shadow: 0 10px 30px rgba(2, 6, 23, .1);
+      --neutral: #d1d5db;
+      --neutral-weak: #f3f4f6;
+      --neutral-text: #374151;
+    }
   </style>
 </head>
 <body>

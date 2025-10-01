@@ -77,6 +77,8 @@
       border-radius: 12px;
       background: #fff;
       cursor: pointer;
+      font-size: 15px;      
+      font-family: inherit; 
     }
 
     .btn.primary {
@@ -258,8 +260,9 @@
       홈스팟
     </div>
     <nav class="right">
-      <a class="btn" href="login.html">로그인</a>
-      <a class="btn primary" href="tenant_signup.html">회원가입</a>
+      <button id="alertBtn" class="btn" type="button" aria-haspopup="true" aria-controls="slideAlertPanel">알림</button>
+      <a class="btn" href="profile_setting.html">프로필</a>
+      <a class="btn primary" href="login.html">로그인</a>
     </nav>
   </div>
 </header>
@@ -272,18 +275,6 @@
       <span>🔍</span>
       <input id="q" placeholder="지역 · 지하철역 · 키워드로 검색" />
       <button class="btn" onclick="goSearch()">검색</button>
-    </div>
-
-    <div class="filterbar">
-      <button class="chip" data-k="price">가격</button>
-      <button class="chip" data-k="area">면적</button>
-      <button class="chip" data-k="rooms">방 개수</button>
-      <button class="chip" data-k="type">집 유형</button>
-      <button class="chip" data-k="pet">반려동물</button>
-      <button class="chip" data-k="new">신축</button>
-      <button class="chip" onclick="location.href='tenant_map.html'">내 주변 보기</button> 
-      <button class="chip" onclick="resetFilters()">초기화</button>
-      <div style="margin-left:auto"></div>
     </div>
   </section>
 
@@ -311,18 +302,10 @@
   </section>
 
   <div class="section-title" style="margin-top:20px; margin-bottom:12px">
-    <h2 style="margin:0">추천 매물 (AI)</h2>
+    <h2 style="margin:0">추천 매물</h2>
     <a class="btn" href="tenant_map.html">지도에서 전체 보기 →</a>
   </div>
   <div id="recommended" class="placeholder">추천 매물 데이터 불러오기 예정…</div>
-
-  <div class="section-title" style="margin-top:20px">
-    <h2 style="margin:0">찜한 매물 목록</h2>
-  </div>
-
-  <div id="propertyList" style="margin-top:10px"></div>
-  <div id="pagination"></div>
-
 </main>
 
 <script>
@@ -339,102 +322,6 @@
   function resetFilters() {
     document.querySelectorAll('.chip.active').forEach(b => b.classList.remove('active'));
   }
-
-  const properties = [
-    '매물 1',
-    '매물 2',
-    '매물 3',
-    '매물 4',
-    '매물 5',
-    '매물 6',
-    '매물 7',
-    '매물 8',
-    '매물 9',
-    '매물 10',
-    '매물 11',
-    '매물 12',
-    '매물 13',
-    '매물 14',
-    '매물 15',
-    '매물 16',
-    '매물 17',
-    '매물 18',
-    '매물 19',
-    '매물 20',
-    '매물 21',
-  ];
-
-  const itemsPerPage = 9;
-  let currentPage = 1;
-
-  function renderProperties(page) {
-    const list = document.getElementById('propertyList');
-    list.innerHTML = '';
-
-    const start = (page - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    const pageItems = properties.slice(start, end);
-
-    pageItems.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.textContent = item;
-      list.appendChild(card);
-    });
-
-    renderPagination();
-  }
-
-  function renderPagination() {
-    const pagination = document.getElementById('pagination');
-    pagination.innerHTML = '';
-
-    const pageCount = Math.ceil(properties.length / itemsPerPage);
-
-    const prevBtn = document.createElement('button');
-    prevBtn.textContent = '이전';
-    prevBtn.className = 'btn';
-    prevBtn.disabled = currentPage === 1;
-    prevBtn.addEventListener('click', () => {
-      if (currentPage > 1) {
-        currentPage--;
-        renderProperties(currentPage);
-        window.scrollTo({top: 0, behavior: 'smooth'});
-      }
-    });
-    pagination.appendChild(prevBtn);
-
-    for (let i = 1; i <= pageCount; i++) {
-      const btn = document.createElement('button');
-      btn.textContent = i;
-      btn.className = 'btn';
-      if (i === currentPage) {
-        btn.style.fontWeight = 'bold';
-        btn.style.backgroundColor = '#B3E5FC';
-      }
-      btn.addEventListener('click', () => {
-        currentPage = i;
-        renderProperties(currentPage);
-        window.scrollTo({top: 0, behavior: 'smooth'});
-      });
-      pagination.appendChild(btn);
-    }
-
-    const nextBtn = document.createElement('button');
-    nextBtn.textContent = '다음';
-    nextBtn.className = 'btn';
-    nextBtn.disabled = currentPage === pageCount;
-    nextBtn.addEventListener('click', () => {
-      if (currentPage < pageCount) {
-        currentPage++;
-        renderProperties(currentPage);
-        window.scrollTo({top: 0, behavior: 'smooth'});
-      }
-    });
-    pagination.appendChild(nextBtn);
-  }
-
-  renderProperties(currentPage);
 
   window.addEventListener('scroll', () => {
     const list = document.getElementById('propertyList');

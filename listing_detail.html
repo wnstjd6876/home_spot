@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>매물 상세 | 홈스팟</title>
+
+<!-- Leaflet 지도 -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Chart.js (시세 그래프) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+:root{
+  --bg:#f7f8fb; --panel:#fff; --line:#e6e8ee; --text:#0f172a; --muted:#64748b; --pri:#2563eb;
+  --shadow:0 10px 30px rgba(17,24,39,.06);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 ui-sans-serif,system-ui,"Noto Sans KR",sans-serif}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1200px;margin:0 auto;padding:16px 20px}
+header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);z-index:20}
+.header{display:flex;align-items:center;gap:12px;padding:12px 20px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:800}
+.logo{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2563eb,#8b5cf6)}
+.right{margin-left:auto;display:flex;gap:8px}
+.btn{padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer}
+.btn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(0,0,0,.06)}
+.btn.pri{background:var(--pri);border-color:transparent;color:#fff}
+.badge{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#fff}
+.tag{padding:2px 8px;border-radius:999px;background:#eef2ff;font-size:12px}
+.muted{color:var(--muted)}
+
+.section{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:0 0 10px}
+
+/* 갤러리 */
+.gallery{display:grid;grid-template-columns:1fr 120px;gap:10px}
+.mainimg{width:100%;height:420px;border-radius:12px;object-fit:cover;background:#e5e7eb}
+.thumbs{display:flex;flex-direction:column;gap:10px;max-height:420px;overflow:auto}
+.thumbs img{width:100%;height:80px;object-fit:cover;border-radius:10px;border:2px solid transparent;cursor:pointer}
+.thumbs img.active{border-color:#2563eb}
+.gallery-nav{display:flex;gap:8px;margin-top:8px}
+.gallery-nav .btn{padding:8px 10px}
+
+/* 핵심 정보 */
+.head{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.head h1{margin:0}
+.head .money{font-size:22px;font-weight:800}
+.meta{display:flex;gap:8px;flex-wrap:wrap}
+
+/* 옵션 아이콘 */
+.opts{display:flex;gap:10px;flex-wrap:wrap}
+.opt{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px 10px}
+
+/* 레이아웃 */
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+@media (max-width:1024px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+
+/* 지도 */
+#map{width:100%;height:340px;border-radius:12px}
+
+/* 모달 */
+.modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(2,6,23,.36);z-index:50}
+.modal.show{display:grid}
+.sheet{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;width:min(560px,92vw)}
+.sheet .row{display:flex;gap:8px;margin:8px 0}
+.sheet input,.sheet textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px}
+.sheet textarea{min-height:100px;resize:vertical}
+.sheet .footer{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.danger{background:#ef4444;color:#fff;border-color:transparent}
+</style>
+</head>
+<body>
+<header>
+  <div class="header wrap">
+    <div class="brand"><div class="logo"></div>HomeSpot</div>
+    <div class="right">
+      <a class="btn" href="tenant_favorites.html">관심목록</a>
+      <a class="btn" href="tenant_map.html">지도</a>
+      <a class="btn pri" href="login.html">로그인</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- 핵심 정보 헤더 -->
+  <section class="section">
+    <div class="head">
+      <div style="flex:1 1 420px">
+        <h1 id="title">마포 한강뷰 아파트</h1>
+        <div class="meta">
+          <span class="badge"><b id="deal">전세</b></span>
+          <span class="badge">유형: <b id="type">아파트</b></span>
+          <span class="badge">면적 <b id="area">84</b>㎡</span>
+          <span class="badge">방 <b id="rooms">3</b></span>
+          <span class="badge">층 <b id="floor">18</b>/<b id="total">30</b></span>
+        </div>
+        <div class="muted" id="addr" style="margin-top:6px">서울 마포구 망원동 123-4</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+        <div class="money" id="price">9.5억</div>
+        <div class="meta">
+          <button id="btnFav" class="btn">☆ 찜하기</button>
+          <button id="btnContact" class="btn pri">중개인 문의</button>
+          <button id="btnGuide" class="btn">가이드</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid" style="margin-top:12px">
+    <!-- 좌: 갤러리 + 상세/옵션 + 지도 + 그래프 -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <section class="section">
+        <h3 class="section-title" style="margin-bottom:8px">이미지 갤러리</h3>
+        <div class="gallery">
+          <img id="mainimg" class="mainimg" src="https://picsum.photos/seed/room1/1200/800" alt="">
+          <div class="thumbs" id="thumbs"></div>
+        </div>
+        <div class="gallery-nav">
+          <button class="btn" id="prev">◀ 이전</button>
+          <button class="btn" id="next">다음 ▶</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title"><h3 style="margin:0">핵심 정보</h3><span class="tag">상세설명</span></div>
+        <div id="desc" class="muted">
+          탁 트인 한강 조망과 풍부한 채광, 대단지 커뮤니티(피트니스, 게스트룸, 키즈카페).  
+          도보 5분 내 편의시설 풍부 / 초중고 도보권 / 반려동물 산책로 인접.
+        </div>
+        <hr style="margin:12px 0;border:none;border-top:1px dashed var(--line)"/>
+        <div><b>옵션</b></div>
+        <div class="opts" id="opts"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-title"><h3 style="margin:0">위치/주변</h3><span class="tag">지하철/학교/상권</span></div>
+        <div id="map"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-title"><h3 style="margin:0">가격 변동 추이</h3><span class="tag">시세 그래프</span></div>
+        <canvas id="chart" height="120"></canvas>
+        <div class="muted" style="margin-top:6px">※ 실제 데이터 연동 지점: <code>/api/price-history?listingId=...</code></div>
+      </section>
+    </div>
+
+    <!-- 우: 중개인 카드/안내 -->
+    <aside style="display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <div class="section-title"><h3 style="margin:0">중개사 정보</h3><span class="tag">공인중개사</span></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <img src="https://i.pravatar.cc/80?img=12" style="width:64px;height:64px;border-radius:50%">
+          <div>
+            <div><b id="agentName">박중개</b> <span class="muted">(홈스팟 공인중개사)</span></div>
+            <div class="muted">📞 <span id="agentPhone">02-123-4567</span></div>
+            <div class="muted">🏢 <span id="agentOffice">마포홈스팟중개사무소</span></div>
+          </div>
+        </div>
+        <button class="btn pri" id="btnContact2" style="margin-top:10px;width:100%">문의하기</button>
+      </div>
+
+      <div class="card">
+        <div class="section-title"><h3 style="margin:0">안전 가이드</h3><span class="tag">체크리스트</span></div>
+        <div class="muted">계약 전 필수 확인사항과 전세사기 방지 팁을 확인하세요.</div>
+        <button class="btn" id="btnGuide2" style="margin-top:10px;width:100%">가이드 열기</button>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<!-- 문의 모달 -->
+<div class="modal" id="modalContact">
+  <div class="sheet">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 style="margin:0">중개인 문의</h3>
+      <button class="btn danger" onclick="toggleModal('modalContact',false)">닫기</button>
+    </div>
+    <form id="contactForm" onsubmit="sendInquiry(event)">
+      <div class="row">
+        <input name="name" placeholder="이름" required>
+        <input name="phone" placeholder="연락처(숫자만)" pattern="[0-9]+" required>
+      </div>
+      <input name="time" placeholder="통화 가능 시간 (예: 평일 저녁)">
+      <textarea name="msg" placeholder="문의 내용을 작성하세요." required></textarea>
+      <div class="footer">
+        <button type="button" class="btn" onclick="toggleModal('modalContact',false)">닫기</button>
+        <button type="submit" class="btn pri">문의 보내기</button>
+      </div>
+    </form>
+    <div class="muted" style="margin-top:8px">※ 실제 전송 지점: <code>POST /api/inquiries</code></div>
+  </div>
+</div>
+
+<!-- 가이드 모달 -->
+<div class="modal" id="modalGuide">
+  <div class="sheet">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 style="margin:0">계약/안전 가이드</h3>
+      <button class="btn danger" onclick="toggleModal('modalGuide',false)">닫기</button>
+    </div>
+    <ul style="margin:10px 0 0 18px">
+      <li>등기부등본상 소유자와 계약 상대가 일치하는지 확인</li>
+      <li>전입신고/확정일자 가능 여부 및 선순위권리 확인</li>
+      <li>보증금 반환 보증 가입 가능 여부 확인</li>
+      <li>계약금/잔금 이체는 가급적 에스크로/안심계좌 사용</li>
+      <li>주변 시세/실거래가 비교 후 과도한 시세는 주의</li>
+    </ul>
+    <div class="footer">
+      <button class="btn" onclick="toggleModal('modalGuide',false)">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* --------------------------- 더미 데이터 --------------------------- */
+const DETAIL = {
+  id: 'L-2025-0001',
+  title:'마포 한강뷰 아파트',
+  deal :'전세', type:'아파트', price: 95000,  // 만원
+  area:84, rooms:3, floor:18, total:30,
+  addr:'서울 마포구 망원동 123-4',
+  lat:37.5559, lng:126.9104,
+  desc:'탁 트인 한강 조망과 풍부한 채광, 대단지 커뮤니티(피트니스, 게스트룸, 키즈카페). 도보 5분 내 편의시설 풍부 / 초중고 도보권 / 반려동물 산책로 인접.',
+  options:['엘리베이터','주차','반려동물','풀옵션'],
+  images:[
+    'https://picsum.photos/seed/room1/1200/800',
+    'https://picsum.photos/seed/room2/1200/800',
+    'https://picsum.photos/seed/room3/1200/800',
+    'https://picsum.photos/seed/room4/1200/800',
+    'https://picsum.photos/seed/room5/1200/800'
+  ],
+  agent:{name:'박중개', phone:'02-123-4567', office:'마포홈스팟중개사무소'}
+};
+// ※ 실제 환경: URL 파라미터 id로 조회 → fetch(`/api/listings/${id}`)
+
+/* --------------------------- 유틸 --------------------------- */
+const $=s=>document.querySelector(s);
+const moneyKR = m => (m>=10000? (m/10000).toFixed(1)+'억' : m+'만');
+
+/* --------------------------- 렌더 --------------------------- */
+function render(){
+  $('#title').textContent=DETAIL.title;
+  $('#deal').textContent=DETAIL.deal;
+  $('#type').textContent=DETAIL.type;
+  $('#price').textContent=moneyKR(DETAIL.price);
+  $('#area').textContent=DETAIL.area;
+  $('#rooms').textContent=DETAIL.rooms;
+  $('#floor').textContent=DETAIL.floor;
+  $('#total').textContent=DETAIL.total;
+  $('#addr').textContent=DETAIL.addr;
+  $('#desc').textContent=DETAIL.desc;
+  $('#agentName').textContent=DETAIL.agent.name;
+  $('#agentPhone').textContent=DETAIL.agent.phone;
+  $('#agentOffice').textContent=DETAIL.agent.office;
+
+  // 옵션
+  $('#opts').innerHTML = DETAIL.options.map(v=>`<span class="opt">✅ ${v}</span>`).join('');
+
+  // 갤러리
+  const main = $('#mainimg');
+  const thumbs = $('#thumbs');
+  main.src = DETAIL.images[0];
+  thumbs.innerHTML = DETAIL.images.map((src,i)=>`<img data-idx="${i}" src="${src}" class="${i===0?'active':''}">`).join('');
+  thumbs.querySelectorAll('img').forEach(img=>{
+    img.onclick = ()=>setMain(Number(img.dataset.idx));
+  });
+
+  // 네비
+  $('#prev').onclick = ()=> nav(-1);
+  $('#next').onclick = ()=> nav(+1);
+
+  // 지도
+  initMap();
+
+  // 그래프(더미 시계열)
+  initChart();
+}
+function setMain(i){
+  const main = $('#mainimg'); main.src = DETAIL.images[i];
+  $('#thumbs').querySelectorAll('img').forEach((t,idx)=>t.classList.toggle('active',idx===i));
+  main.dataset.idx = i;
+}
+function nav(d){
+  const i = Number($('#mainimg').dataset.idx||0);
+  const n = (i + d + DETAIL.images.length) % DETAIL.images.length;
+  setMain(n);
+}
+
+/* --------------------------- 지도 --------------------------- */
+let map;
+function initMap(){
+  map = L.map('map',{scrollWheelZoom:false}).setView([DETAIL.lat, DETAIL.lng], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+  L.marker([DETAIL.lat,DETAIL.lng]).addTo(map).bindPopup(DETAIL.title);
+}
+
+/* --------------------------- 시세 그래프 --------------------------- */
+function initChart(){
+  const ctx = document.getElementById('chart');
+  // 더미 데이터 (최근 12개월)
+  const labels = Array.from({length:12}).map((_,i)=>`${i+1}개월 전`).reverse();
+  const values = Array.from({length:12}).map((_,i)=> 7.8 + Math.sin(i/2)*0.4 + (i*0.03) ); // 억 단위
+  new Chart(ctx,{
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        label:'실거래가(억)',
+        data:values,
+        borderColor:'#2563eb',
+        tension:.3
+      }]
+    },
+    options:{
+      scales:{y:{ticks:{callback:v=>v+'억'}}},
+      plugins:{legend:{display:false}}
+    }
+  });
+}
+
+/* --------------------------- 찜(즐겨찾기) --------------------------- */
+const FAV_KEY='hs:favs';
+function isFav(id){ try{ return JSON.parse(localStorage.getItem(FAV_KEY)||'[]').includes(id); }catch{return false} }
+function toggleFav(){
+  const id = DETAIL.id;
+  let arr = [];
+  try{arr = JSON.parse(localStorage.getItem(FAV_KEY)||'[]')}catch{}
+  if(arr.includes(id)) arr = arr.filter(x=>x!==id);
+  else arr.push(id);
+  localStorage.setItem(FAV_KEY, JSON.stringify(arr));
+  paintFavButton();
+}
+function paintFavButton(){
+  const f = isFav(DETAIL.id);
+  const btn = $('#btnFav');
+  btn.textContent = f ? '★ 찜됨' : '☆ 찜하기';
+}
+$('#btnFav').onclick=toggleFav;
+
+/* --------------------------- 문의/가이드 모달 --------------------------- */
+function toggleModal(id, show){
+  const el = document.getElementById(id);
+  if(show===undefined) el.classList.toggle('show');
+  else el.classList.toggle('show',show);
+}
+['btnContact','btnContact2'].forEach(id=>document.getElementById(id).onclick=()=>toggleModal('modalContact', true));
+['btnGuide','btnGuide2'].forEach(id=>document.getElementById(id).onclick=()=>toggleModal('modalGuide', true));
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ toggleModal('modalContact',false); toggleModal('modalGuide',false); }
+});
+document.querySelectorAll('.modal').forEach(m=>{
+  m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('show'); });
+});
+
+/* --------------------------- 문의 전송(더미) --------------------------- */
+function sendInquiry(e){
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  // 실제 전송: fetch('/api/inquiries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data, listingId: DETAIL.id})})
+  alert('문의가 접수되었습니다. (더미)\n\n이름: '+data.name+'\n연락처: '+data.phone+'\n희망시간: '+(data.time||'')+'\n내용: '+data.msg);
+  e.target.reset();
+  toggleModal('modalContact', false);
+}
+
+/* --------------------------- 시작 --------------------------- */
+render();
+paintFavButton();
+</script>
+</body>
+</html>
