@@ -1,0 +1,32 @@
+{
+  "name": "homespot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A simple login server with database integration",
+  "main": "server.js",
+  "author": "seaungil",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "geocode": "node scripts/geocode_listings.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.872.0",
+    "axios": "^1.11.0",
+    "bcrypt": "^5.1.1",
+    "compression": "^1.8.1",
+    "csv-parse": "^6.1.0",
+    "csv-stringify": "^6.6.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "fast-csv": "^5.0.5",
+    "multer": "^2.0.2",
+    "mysql2": "^3.11.0",
+    "nodemailer": "^7.0.5"
+  }
+}
